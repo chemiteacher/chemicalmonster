@@ -1526,6 +1526,138 @@
     .dialog-box { padding: 6px 8px; }
     .cmd-btn { padding: 7px 5px; }
   }
+
+  /* チュートリアル導入（オーキド博士風・黒枠白抜きメッセージウィンドウ） */
+  #tutorial-intro-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    background: rgba(2, 6, 23, 0.78);
+    backdrop-filter: blur(3px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    padding: 18px;
+    cursor: pointer;
+  }
+  .tutorial-prof-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    animation: logoFloat 2.8s ease-in-out infinite;
+  }
+  .tutorial-prof-avatar {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffffff, #bae6fd 65%, #0284c7 100%);
+    border: 4px solid #ffffff;
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 46px;
+  }
+  .tutorial-prof-name {
+    background: #0284c7;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 2px 12px;
+    border-radius: 999px;
+    border: 2px solid #fff;
+    letter-spacing: 0.08em;
+  }
+  .tutorial-msg-window {
+    width: 100%;
+    max-width: 390px;
+    background: #0f172a;
+    color: #ffffff;
+    border: 4px solid #ffffff;
+    outline: 3px solid #0f172a;
+    border-radius: 14px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+  }
+  .tutorial-msg-text {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.65;
+    min-height: 52px;
+  }
+  .tutorial-msg-next {
+    margin-top: 8px;
+    text-align: right;
+    font-size: 11.5px;
+    font-weight: 900;
+    color: #fde047;
+    animation: tapBlink 1.1s ease-in-out infinite;
+  }
+
+  /* チュートリアル用スポットライトUI */
+  #screen-battle.tutorial-spotlight-active .battle-bottom-deck {
+    z-index: auto !important;
+  }
+  #tutorial-spotlight-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    background: rgba(0, 0, 0, 0.62);
+    pointer-events: auto;
+  }
+  .tutorial-spotlight-target {
+    position: relative !important;
+    z-index: 62 !important;
+    box-shadow: 0 0 0 4px #fde047, 0 0 24px rgba(250, 204, 21, 0.95) !important;
+    border-radius: 10px;
+    background: #ffffff;
+    pointer-events: auto !important;
+  }
+  .tutorial-tooltip {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 370px;
+    z-index: 63;
+    background: linear-gradient(180deg, #fefce8 0%, #fef08a 100%);
+    color: #0f172a;
+    border: 3px solid #ea580c;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1.45;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+  }
+  .tutorial-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 10px 9px 0 9px;
+    border-style: solid;
+    border-color: #ea580c transparent transparent transparent;
+  }
+  .tutorial-skip-btn {
+    background: rgba(15, 23, 42, 0.86);
+    color: #e2e8f0;
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 11.5px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+    z-index: 64;
+  }
+  .tutorial-skip-btn:active { transform: scale(0.95); }
 </style>
 </head>
 <body>
@@ -1571,6 +1703,7 @@
 
       <div class="title-cta-area">
         <div id="title-cta-text" class="tap-to-start-blink">▶ 画面をタップしてはじめる</div>
+        <button type="button" class="tutorial-skip-btn" style="background:rgba(15,23,42,0.82);border-color:rgba(255,255,255,0.8);" onclick="event.stopPropagation(); Game.openSubpage('spell');">📜 ふっかつのじゅもん（引継ぎ）</button>
       </div>
     </div>
 
@@ -1715,12 +1848,31 @@
 
         <!-- 常時表示 4色コマンドボタン（赤:こうげき(解答) / オレンジ:どうぐ・交代 / 青:フラスコ捕集 / 緑:にげる） -->
         <div id="panel-commands" class="cmd-grid">
-          <button class="cmd-btn cmd-fight" onclick="Game.onCommandFight()">⚔️ こうげき (解答)</button>
+          <button id="btn-cmd-fight" class="cmd-btn cmd-fight" onclick="Game.onCommandFight()">⚔️ こうげき (解答)</button>
           <button class="cmd-btn cmd-bag" onclick="Game.onCommandBag()">🎒 どうぐ・交代</button>
           <button class="cmd-btn cmd-flask" onclick="Game.onCommandFlask()">🧪 フラスコ捕集</button>
           <button class="cmd-btn cmd-run" onclick="Game.onCommandRun()">💨 にげる</button>
         </div>
       </div>
+
+      <!-- チュートリアル用スポットライトオーバーレイ -->
+      <div id="tutorial-spotlight-overlay" class="hidden">
+        <button type="button" class="tutorial-skip-btn" style="position:absolute;top:8px;right:8px;" onclick="event.stopPropagation(); Game.skipTutorial();">⏭ チュートリアルをスキップ</button>
+        <div id="tutorial-tooltip" class="tutorial-tooltip">まずは 問題の答えを このテンキーで 入力してみよう！</div>
+      </div>
+    </div>
+
+    <!-- チュートリアル導入・完了メッセージオーバーレイ（オーキド博士風） -->
+    <div id="tutorial-intro-overlay" class="hidden" onclick="Game.advanceTutorialIntro()">
+      <div class="tutorial-prof-badge">
+        <div class="tutorial-prof-avatar">👨‍🔬</div>
+        <div class="tutorial-prof-name">ケミカル博士</div>
+      </div>
+      <div class="tutorial-msg-window">
+        <div id="tutorial-msg-text" class="tutorial-msg-text">ケミカルモンスターの せかいへ ようこそ！</div>
+        <div class="tutorial-msg-next">▼ タップしてつづく</div>
+      </div>
+      <button type="button" id="btn-tutorial-skip" class="tutorial-skip-btn" onclick="event.stopPropagation(); Game.skipTutorial();">⏭ チュートリアルをスキップ</button>
     </div>
 
     <!-- 4. サブページ（図鑑・相棒・錬成・通信対戦・相性） -->
@@ -6405,6 +6557,9 @@ const CalcUI = (() => {
     buf = '';
     onSubmitCb = cb;
     render();
+    if (typeof Game !== 'undefined' && Game.onTutorialCalcInput) {
+      Game.onTutorialCalcInput(buf);
+    }
   }
 
   function render() {
@@ -6450,6 +6605,9 @@ const CalcUI = (() => {
       else buf += ch;
     }
     render();
+    if (typeof Game !== 'undefined' && Game.onTutorialCalcInput) {
+      Game.onTutorialCalcInput(buf);
+    }
   }
 
   function toggleSign() {
@@ -6463,18 +6621,27 @@ const CalcUI = (() => {
       else buf = '-' + buf;
     }
     render();
+    if (typeof Game !== 'undefined' && Game.onTutorialCalcInput) {
+      Game.onTutorialCalcInput(buf);
+    }
   }
 
   function backspace() {
     SoundEngine.seClick();
     buf = buf.slice(0, -1);
     render();
+    if (typeof Game !== 'undefined' && Game.onTutorialCalcInput) {
+      Game.onTutorialCalcInput(buf);
+    }
   }
 
   function clear() {
     SoundEngine.seClick();
     buf = '';
     render();
+    if (typeof Game !== 'undefined' && Game.onTutorialCalcInput) {
+      Game.onTutorialCalcInput(buf);
+    }
   }
 
   function submit() {
@@ -6633,6 +6800,158 @@ const Game = (() => {
 
   let openChapters = { 1: true };
 
+  // ドラゴンクエスト風「ふっかつのじゅもん」（ひらがな10文字・60bitセーブデータ引継ぎ）
+  const SPELL_KANA = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだでどばびぶべぼ';
+
+  function encodeSaveSpell() {
+    normalizeTeam();
+    const b = getBuddy();
+    let species = b.z || 1;
+    if (b.isCompound && b.compoundId) {
+      const cIdx = RECIPES.findIndex(r => r.id === b.compoundId);
+      if (cIdx >= 0) species = 114 + cIdx;
+    }
+    species = Math.max(1, Math.min(255, species));
+    const lv = Math.max(1, Math.min(127, b.lv || 1));
+    const ivMap = { C: 0, B: 1, A: 2, S: 3 };
+    const iv = ivMap[b.ivRank] !== undefined ? ivMap[b.ivRank] : 1;
+    const iso = b.isIsotope ? 1 : 0;
+    const tower = Math.max(0, Math.min(127, state.towerBest || 0));
+    const dexCnt = Math.max(1, Math.min(113, Object.keys(state.dex || {}).length));
+    const wins = Math.max(0, Math.min(255, (state.stats && state.stats.wins) || 0));
+    const catches = Math.max(0, Math.min(255, (state.stats && state.stats.catches) || 0));
+    const salt = ((state.stats && state.stats.answered) || 0) & 0x0f;
+
+    let payload = 0n;
+    const pushBits = (val, bits) => {
+      payload = (payload << BigInt(bits)) | BigInt(val & ((1 << bits) - 1));
+    };
+    pushBits(species, 8);
+    pushBits(lv, 7);
+    pushBits(iv, 2);
+    pushBits(iso, 1);
+    pushBits(tower, 7);
+    pushBits(dexCnt, 7);
+    pushBits(wins, 8);
+    pushBits(catches, 8);
+    pushBits(salt, 4);
+
+    // 8bitチェックサム（入力ミス検出用）
+    let csum = 0x5a;
+    let tmp = payload;
+    for (let i = 0; i < 7; i++) {
+      csum = (csum * 33 + Number(tmp & 0xffn)) & 0xff;
+      tmp >>= 8n;
+    }
+    let full = (payload << 8n) | BigInt(csum);
+
+    let out = '';
+    for (let i = 0; i < 10; i++) {
+      const idx = Number(full & 0x3fn);
+      out = SPELL_KANA[idx] + out;
+      full >>= 6n;
+    }
+    return out.slice(0, 5) + ' ' + out.slice(5);
+  }
+
+  function applySaveSpell(raw) {
+    if (!raw || typeof raw !== 'string') return false;
+    // スペース除去・カタカナをひらがなへ正規化
+    const clean = raw.replace(/[\s　]/g, '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+    if (clean.length !== 10) return false;
+
+    let full = 0n;
+    for (let i = 0; i < 10; i++) {
+      const idx = SPELL_KANA.indexOf(clean[i]);
+      if (idx < 0) return false;
+      full = (full << 6n) | BigInt(idx);
+    }
+
+    const csumIn = Number(full & 0xffn);
+    const payload = full >> 8n;
+    let csumExp = 0x5a;
+    let tmp = payload;
+    for (let i = 0; i < 7; i++) {
+      csumExp = (csumExp * 33 + Number(tmp & 0xffn)) & 0xff;
+      tmp >>= 8n;
+    }
+    if (csumIn !== csumExp) return false;
+
+    let p = payload;
+    const popBits = (bits) => {
+      const v = Number(p & BigInt((1 << bits) - 1));
+      p >>= BigInt(bits);
+      return v;
+    };
+    const salt = popBits(4);
+    const catches = popBits(8);
+    const wins = popBits(8);
+    const dexCnt = Math.max(1, Math.min(113, popBits(7)));
+    const tower = popBits(7);
+    const iso = popBits(1) === 1;
+    const ivIdx = popBits(2);
+    const lv = Math.max(1, popBits(7));
+    const species = popBits(8);
+
+    const ivRanks = ['C', 'B', 'A', 'S'];
+    const ivScales = [0.9, 1.0, 1.12, 1.24];
+    const ivMults = [0.95, 1.0, 1.12, 1.25];
+    const ivRank = ivRanks[ivIdx] || 'B';
+
+    let buddyObj;
+    if (species >= 114 && RECIPES[species - 114]) {
+      const r = RECIPES[species - 114];
+      buddyObj = {
+        uid: 'cmp-spell-' + Date.now(),
+        isCompound: true,
+        compoundId: r.id,
+        z: 1,
+        lv,
+        exp: 0,
+        isIsotope: iso,
+        ivRank,
+        ivScale: ivScales[ivIdx] || 1.0,
+        ivMult: ivMults[ivIdx] || 1.0
+      };
+      state.compounds[r.id] = Math.max(1, state.compounds[r.id] || 0);
+    } else {
+      const z = Math.max(1, Math.min(113, species || 1));
+      buddyObj = {
+        uid: 'm-spell-' + Date.now(),
+        z,
+        lv,
+        exp: 0,
+        isIsotope: iso,
+        ivRank,
+        ivScale: ivScales[ivIdx] || 1.0,
+        ivMult: ivMults[ivIdx] || 1.0
+      };
+    }
+
+    state.party = [buddyObj];
+    state.team = [0];
+    state.towerBest = tower;
+    state.stats.wins = wins;
+    state.stats.catches = catches;
+    state.stats.correct = Math.max(wins, catches);
+    state.stats.answered = Math.max(wins, catches, salt);
+
+    state.dex = { 1: { count: 1, iso: false, bestIv: 'B' } };
+    if (!buddyObj.isCompound) {
+      state.dex[buddyObj.z] = { count: 1, iso: buddyObj.isIsotope, bestIv: buddyObj.ivRank };
+      state.elements[buddyObj.z] = Math.max(1, state.elements[buddyObj.z] || 0);
+    }
+    for (let z = 2; z <= 113 && Object.keys(state.dex).length < dexCnt; z++) {
+      if (!state.dex[z]) {
+        state.dex[z] = { count: 1, iso: false, bestIv: 'B' };
+        state.elements[z] = Math.max(1, state.elements[z] || 0);
+      }
+    }
+    localStorage.setItem('tutorialCompleted', '1');
+    save();
+    return true;
+  }
+
   function refreshTitleScreen() {
     const b = getBuddy();
     const meta = getMonsterMeta(b);
@@ -6703,6 +7022,9 @@ const Game = (() => {
   function returnToTitle() {
     SoundEngine.seClick();
     DexPreview3D.stop();
+    setTutorialSpotlight(null);
+    const tutOv = document.getElementById('tutorial-intro-overlay');
+    if (tutOv) tutOv.classList.add('hidden');
     if (battle) {
       battle = null;
       setExpBanner(null, null);
@@ -6712,10 +7034,152 @@ const Game = (() => {
     SoundEngine.playBGM('title');
   }
 
+  const TUTORIAL_INTRO_LINES = [
+    'ケミカルモンスターの せかいへ ようこそ！',
+    'ここでは 元素や化合物が モンスターとして あばれまわっている！',
+    'キミの ちしきと けいさんりょくで モンスターを ほしゅう（捕集）し、',
+    'さいきょうの ケミカルトレーナーを めざすのだ！',
+    'おっと！ さっそく やせいの モンスターが とびだしてきたぞ！'
+  ];
+  let tutorialIntroIdx = 0;
+  let tutorialOverlayMode = 'intro'; // 'intro' | 'complete'
+  let tutorialSpotlightStep = null; // null | 'keypad' | 'attack'
+
+  function setTutorialSpotlight(step) {
+    tutorialSpotlightStep = step;
+    const screenEl = document.getElementById('screen-battle');
+    const overlay = document.getElementById('tutorial-spotlight-overlay');
+    const tooltip = document.getElementById('tutorial-tooltip');
+    const calcEl = document.getElementById('panel-calc');
+    const fightBtn = document.getElementById('btn-cmd-fight');
+    if (calcEl) calcEl.classList.remove('tutorial-spotlight-target');
+    if (fightBtn) fightBtn.classList.remove('tutorial-spotlight-target');
+    if (!step || !overlay || !screenEl) {
+      if (screenEl) screenEl.classList.remove('tutorial-spotlight-active');
+      if (overlay) overlay.classList.add('hidden');
+      return;
+    }
+    screenEl.classList.add('tutorial-spotlight-active');
+    overlay.classList.remove('hidden');
+    if (step === 'keypad' && calcEl) {
+      calcEl.classList.add('tutorial-spotlight-target');
+      if (tooltip) {
+        tooltip.textContent = 'まずは 問題の答えを このテンキーで 入力してみよう！';
+        requestAnimationFrame(() => {
+          const sr = screenEl.getBoundingClientRect();
+          const tr = calcEl.getBoundingClientRect();
+          const scale = sr.height / (screenEl.offsetHeight || sr.height || 1);
+          const bottomPx = Math.max(120, Math.round((sr.bottom - tr.top) / scale) + 12);
+          tooltip.style.bottom = bottomPx + 'px';
+        });
+      }
+    } else if (step === 'attack' && fightBtn) {
+      fightBtn.classList.add('tutorial-spotlight-target');
+      if (tooltip) {
+        tooltip.textContent = '『こうげき』ボタンを タップだ！';
+        requestAnimationFrame(() => {
+          const sr = screenEl.getBoundingClientRect();
+          const tr = fightBtn.getBoundingClientRect();
+          const scale = sr.height / (screenEl.offsetHeight || sr.height || 1);
+          const bottomPx = Math.max(60, Math.round((sr.bottom - tr.top) / scale) + 12);
+          tooltip.style.bottom = bottomPx + 'px';
+        });
+      }
+    }
+  }
+
+  function onTutorialCalcInput(bufStr) {
+    if (!battle || battle.kind !== 'tutorial') return;
+    if (tutorialSpotlightStep === 'keypad' && bufStr && bufStr.length > 0) {
+      setTutorialSpotlight('attack');
+    }
+  }
+
+  function startTutorialIntro() {
+    tutorialOverlayMode = 'intro';
+    tutorialIntroIdx = 0;
+    const ov = document.getElementById('tutorial-intro-overlay');
+    const txt = document.getElementById('tutorial-msg-text');
+    const skipBtn = document.getElementById('btn-tutorial-skip');
+    if (skipBtn) skipBtn.classList.remove('hidden');
+    if (txt) txt.textContent = TUTORIAL_INTRO_LINES[0];
+    if (ov) ov.classList.remove('hidden');
+  }
+
+  function showTutorialComplete() {
+    tutorialOverlayMode = 'complete';
+    const ov = document.getElementById('tutorial-intro-overlay');
+    const txt = document.getElementById('tutorial-msg-text');
+    const skipBtn = document.getElementById('btn-tutorial-skip');
+    if (skipBtn) skipBtn.classList.add('hidden');
+    if (txt) txt.textContent = '見事だ！ その調子で 図鑑のコンプリートを めざしてくれ！';
+    if (ov) ov.classList.remove('hidden');
+  }
+
+  function skipTutorial() {
+    SoundEngine.seClick();
+    setTutorialSpotlight(null);
+    const ov = document.getElementById('tutorial-intro-overlay');
+    if (ov) ov.classList.add('hidden');
+    localStorage.setItem('tutorialCompleted', '1');
+    if (battle && battle.kind === 'tutorial') {
+      endBattleToHome();
+    } else {
+      Monster3DRenderer.setHiddenMode();
+      updateHomeBar();
+      showScreen('home');
+    }
+  }
+
+  function advanceTutorialIntro() {
+    SoundEngine.seClick();
+    const ov = document.getElementById('tutorial-intro-overlay');
+    const txt = document.getElementById('tutorial-msg-text');
+    if (tutorialOverlayMode === 'complete') {
+      if (ov) ov.classList.add('hidden');
+      localStorage.setItem('tutorialCompleted', '1');
+      endBattleToHome();
+      return;
+    }
+    tutorialIntroIdx++;
+    if (tutorialIntroIdx < TUTORIAL_INTRO_LINES.length) {
+      if (txt) txt.textContent = TUTORIAL_INTRO_LINES[tutorialIntroIdx];
+    } else {
+      if (ov) ov.classList.add('hidden');
+      startTutorialBattle();
+    }
+  }
+
+  function startTutorialBattle() {
+    const eMon = {
+      z: 1,
+      lv: 1,
+      isIsotope: false,
+      role: 'normal',
+      ivRank: 'A',
+      ivScale: 1.0,
+      ivMult: 1.0
+    };
+    launchBattle({
+      kind: 'tutorial',
+      areaId: 4,
+      enemy: eMon,
+      eHp: 20,
+      eMaxHp: 20,
+      atkBuff: 1.0,
+      catchBonus: 0,
+      locked: false
+    });
+  }
+
   function startFromTitle() {
     SoundEngine.init();
     SoundEngine.seClick();
     SoundEngine.playBGM('title');
+    if (!localStorage.getItem('tutorialCompleted')) {
+      startTutorialIntro();
+      return;
+    }
     Monster3DRenderer.setHiddenMode();
     updateHomeBar();
     showScreen('home');
@@ -7264,7 +7728,17 @@ const Game = (() => {
     if (!battle) return;
     let areaId = battle.areaId;
     let q = null;
-    if (battle.kind === 'review' && Array.isArray(state.mistakes) && state.mistakes.length > 0) {
+    if (battle.kind === 'tutorial') {
+      areaId = 4;
+      battle.areaId = 4;
+      q = {
+        type: 'calc',
+        q: '【チュートリアル】原子番号 1 の 水素 (H) がもつ「陽子」の数はいくつ？',
+        ans: 1,
+        unit: '個',
+        exp: '原子番号は原子核中の陽子の数に等しいため、水素 (H, 原子番号1) の陽子の数は 1 個です！'
+      };
+    } else if (battle.kind === 'review' && Array.isArray(state.mistakes) && state.mistakes.length > 0) {
       const idx = (battle.reviewCursor || 0) % state.mistakes.length;
       const m = state.mistakes[idx];
       battle.reviewCursor = idx + 1;
@@ -7332,11 +7806,17 @@ const Game = (() => {
         const ok = QuestionEngine.checkCalcAnswer(valStr, q.ans);
         resolveAnswer(ok);
       });
+      if (battle.kind === 'tutorial') {
+        setTutorialSpotlight('keypad');
+      }
     }
   }
 
   function onCommandFight() {
     if (!battle || battle.locked) return;
+    if (battle.kind === 'tutorial') {
+      setTutorialSpotlight(null);
+    }
     if (battle.awaitingCatchChoice) {
       SoundEngine.seClick();
       setBattleMsg('🎯 敵モンスターはすでに倒れています！「捕集する」か「捕集しない」を選んでください。');
@@ -7400,7 +7880,10 @@ const Game = (() => {
       const activeChem = battle.equippedChem || pMeta.chemType || null;
       const mult = getTypeMultiplier(pMeta.type, eMeta.type, activeChem);
       const rawDmg = calcAtk(activeMon) * movePowerMult * (0.92 + Math.random() * 0.22) * mult * battle.atkBuff;
-      const dmg = Math.max(12, Math.round(rawDmg));
+      let dmg = Math.max(12, Math.round(rawDmg));
+      if (battle.kind === 'tutorial') {
+        dmg = battle.eHp;
+      }
       battle.atkBuff = 1.0;
 
       // 選択した技の追加効果（化学特性技・奥義）
@@ -7454,6 +7937,13 @@ const Game = (() => {
         battle.eHp = Math.max(0, battle.eHp - dmg);
         updateBattleHUD();
         setBattleMsg(`💥 ${pMeta.sym} の『${selectedMove.name}』が炸裂！ ${dmg} のダメージ！${effMsg}${bonusMsg}${mpGainMsg}`);
+        if (battle.kind === 'tutorial' && battle.eHp <= 0) {
+          setTimeout(() => {
+            if (!battle) return;
+            onEnemyDefeated();
+          }, 900);
+          return;
+        }
         // モンスターに攻撃が当たって1.5秒後に解説を表示し、タップで閉じた時 or 5秒後に自動消去された時に次へ進む
         setTimeout(() => {
           if (!battle) return;
@@ -7469,6 +7959,13 @@ const Game = (() => {
       });
     } else {
       SoundEngine.seWrong();
+      if (battle.kind === 'tutorial') {
+        battle.locked = false;
+        setBattleMsg('おしい！ 水素(原子番号1)の陽子の数は「1」だよ！ もういちど入力してみよう！');
+        CalcUI.reset(answeredQ.unit || '');
+        setTutorialSpotlight('keypad');
+        return;
+      }
       recordMistake(answeredQ, battle.areaId);
       battle.streak = 0;
       battle.mp = 0;
@@ -7575,7 +8072,9 @@ const Game = (() => {
     }
     save();
 
-    if (battle.kind === 'wild') {
+    if (battle.kind === 'tutorial') {
+      throwFlask(true);
+    } else if (battle.kind === 'wild') {
       promptCatchChoice();
     } else if (battle.kind === 'review') {
       SoundEngine.seCatchFanfare();
@@ -7841,7 +8340,7 @@ const Game = (() => {
     const hpRatio = battle.eHp / battle.eMaxHp;
     let rate = afterKnockout ? 0.62 : (0.22 + (1 - hpRatio) * 0.42);
     rate = Math.min(0.88, rate + battle.catchBonus);
-    const willCatch = Math.random() < rate;
+    const willCatch = battle.kind === 'tutorial' ? true : (Math.random() < rate);
 
     const eMeta = getMonsterMeta(battle.enemy);
     setBattleMsg(`🧑‍🔬 トレーナーが 特殊捕集フラスコを 振りかぶって なげた！`);
@@ -7860,7 +8359,11 @@ const Game = (() => {
       (success) => {
         if (success) {
           registerCaughtMonster(battle.enemy);
-          setTimeout(() => endBattleToHome(), 1400);
+          if (battle.kind === 'tutorial') {
+            setTimeout(() => showTutorialComplete(), 1100);
+          } else {
+            setTimeout(() => endBattleToHome(), 1400);
+          }
         } else {
           if (afterKnockout) {
             setBattleMsg(`${eMeta.name} は どこかへ 逃げてしまった… (${eMeta.sym} の素材を獲得！)`);
@@ -8284,7 +8787,7 @@ const Game = (() => {
     DexPreview3D.stop();
     normalizeTeam();
     if (currentScreenId !== 'subpage') {
-      subpageReturnScreen = (tab === 'guide') ? currentScreenId : 'home';
+      subpageReturnScreen = (tab === 'guide' || tab === 'spell') ? currentScreenId : 'home';
     }
     const titleEl = document.getElementById('subpage-title');
     const body = document.getElementById('subpage-body');
@@ -8866,14 +9369,67 @@ const Game = (() => {
           <li><b>遷移金属・酸化武装</b> → 非金属 / 半金属 / 金属類 に <b>1.4倍</b></li>
           <li><b>貴ガス</b> → 閉殻で安定なため多くの攻撃を <b>0.75倍</b> に軽減！</li>
         </ul>
-        <button id="btn-reset-save" class="btn-back" style="margin-top:10px;">セーブデータを初期化</button>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+          <button id="btn-open-spell" class="btn-primary" style="flex:1;background:linear-gradient(180deg,#0284c7,#0369a1);" onclick="Game.openSubpage('spell')">📜 ふっかつのじゅもん</button>
+          <button id="btn-reset-save" class="btn-back" style="margin-top:0;">セーブデータを初期化</button>
+        </div>
       `;
       body.appendChild(box);
       document.getElementById('btn-reset-save').onclick = () => {
         if (confirm('本当にすべてのデータを初期化しますか？')) {
           localStorage.removeItem(SAVE_KEY);
+          localStorage.removeItem('tutorialCompleted');
           location.reload();
         }
+      };
+    }
+
+    else if (tab === 'spell') {
+      titleEl.textContent = '📜 ふっかつのじゅもん（データ引継ぎ）';
+      const mySpell = encodeSaveSpell();
+      const b = getBuddy();
+      const bMeta = getMonsterMeta(b);
+      const dexCnt = Object.keys(state.dex).length;
+
+      const card = document.createElement('div');
+      card.className = 'card-box';
+      card.innerHTML = `
+        <div style="font-size:13px;font-weight:900;color:#0369a1;margin-bottom:4px;">💾 あなたの ふっかつのじゅもん（10文字）</div>
+        <div style="font-size:11px;color:#475569;margin-bottom:8px;">
+          相棒: <b>${bMeta.sym} Lv.${b.lv} [${b.ivRank}]</b> ／ 図鑑: <b>${dexCnt}/113</b> ／ 最高: <b>${state.towerBest}F</b>
+        </div>
+        <div style="background:#0f172a;color:#fde047;border:3px solid #facc15;border-radius:10px;padding:12px 10px;text-align:center;font-size:21px;font-weight:900;letter-spacing:0.14em;margin-bottom:8px;user-select:all;" id="my-save-spell">${mySpell}</div>
+        <button type="button" id="btn-copy-spell" class="btn-primary" style="width:100%;padding:10px;font-size:13px;">📋 じゅもんを コピー（メモ帳などに保存）</button>
+        <div style="font-size:10.5px;color:#64748b;margin-top:6px;">💡 別のスマホ・PCでもこの10文字を入力すると、相棒や図鑑達成数・記録を引き継げます。</div>
+        <hr style="margin:14px 0;border:none;border-top:1.5px dashed #cbd5e1;">
+        <div style="font-size:13px;font-weight:900;color:#b45309;margin-bottom:6px;">✨ じゅもんを となえて データを復元</div>
+        <input id="input-save-spell" type="text" maxlength="20" placeholder="例: ${mySpell}" style="width:100%;padding:10px;text-align:center;font-size:18px;font-weight:900;letter-spacing:0.12em;border-radius:8px;border:2px solid #0284c7;background:#f8fafc;color:#0f172a;margin-bottom:8px;">
+        <button type="button" id="btn-load-spell" class="btn-primary" style="width:100%;padding:11px;font-size:13.5px;background:linear-gradient(180deg,#f59e0b,#d97706);">🔮 このじゅもんで データをひきつぐ！</button>
+      `;
+      body.appendChild(card);
+
+      document.getElementById('btn-copy-spell').onclick = () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(mySpell).catch(() => {});
+        }
+        SoundEngine.seClick();
+        alert(`ふっかつのじゅもん「${mySpell}」をコピーしました！\nメモ帳などに貼り付けて保存してください。`);
+      };
+      document.getElementById('btn-load-spell').onclick = () => {
+        const raw = document.getElementById('input-save-spell').value;
+        const ok = applySaveSpell(raw);
+        if (!ok) {
+          SoundEngine.seWrong();
+          alert('ふっかつのじゅもんが ちがいます！\nひらがな10文字が正しく入力されているか確認してください。');
+          return;
+        }
+        SoundEngine.seCatchFanfare();
+        refreshTitleScreen();
+        renderAreaList();
+        updateHomeBar();
+        alert('✨ ふっかつのじゅもん を となえた！\nセーブデータの引き継ぎが完了しました！');
+        subpageReturnScreen = 'home';
+        closeSubpage();
       };
     }
 
@@ -8961,7 +9517,8 @@ const Game = (() => {
   return {
     init, startFromTitle, returnToTitle, startWildBattle, startTower,
     onCommandFight, onCommandFlask, onCommandBag, onCommandSwitch, onCommandRun,
-    onConfirmCatch, openSubpage, closeSubpage
+    onConfirmCatch, openSubpage, closeSubpage,
+    advanceTutorialIntro, skipTutorial, onTutorialCalcInput
   };
 })();
 
