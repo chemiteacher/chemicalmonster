@@ -44,26 +44,18 @@
     align-items: center;
   }
 
-  /* スマホ縦画面デバイスフレーム */
+  /* 基準幅430pxのデバイスフレーム（JSのfitAppShellで全端末に等倍スケーリング） */
   #app-shell {
     position: relative;
-    width: 100%;
-    max-width: 460px;
-    height: 100dvh;
-    max-height: 920px;
+    width: 430px;
+    height: 820px;
+    flex-shrink: 0;
+    transform-origin: center center;
     background: var(--device-white);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 0 40px rgba(6, 182, 212, 0.35), 0 0 0 4px #1e293b;
-  }
-
-  @media (min-width: 500px) {
-    #app-shell {
-      height: 95dvh;
-      border-radius: 28px;
-      border: 6px solid var(--device-red);
-    }
   }
 
   /* 上部デバイスヘッダー */
@@ -5531,14 +5523,14 @@ const Monster3DRenderer = (() => {
       onFinishCallback(willCatch);
       return;
     }
-    const trainerPos = new THREE.Vector3(-1.32, -0.48, 1.75);
-    const releasePos = new THREE.Vector3(-0.92, -0.10, 1.35);
+    const trainerPos = new THREE.Vector3(-1.62, -0.05, -0.25);
+    const releasePos = new THREE.Vector3(-1.32, 0.12, -0.05);
     const targetPos = enemyMesh.position.clone().add(new THREE.Vector3(0, -0.12, 0));
 
-    // トレーナーを左手前に登場させ、振りかぶりポーズにセット
+    // トレーナーを相棒モンスターの後方（左奥）に登場させ、振りかぶりポーズにセット
     if (trainerGroup && trainerArmPivot) {
-      trainerGroup.position.set(trainerPos.x - 0.25, trainerPos.y, trainerPos.z);
-      trainerGroup.rotation.set(0, -0.65, 0);
+      trainerGroup.position.set(trainerPos.x - 0.20, trainerPos.y, trainerPos.z);
+      trainerGroup.rotation.set(0, -0.60, 0);
       trainerArmPivot.rotation.set(1.15, 0, -0.25);
       trainerGroup.visible = true;
     }
@@ -6143,7 +6135,33 @@ const Game = (() => {
     }
   }
 
+  function fitAppShell() {
+    const shell = document.getElementById('app-shell');
+    if (!shell) return;
+    const vw = window.innerWidth || 430;
+    const vh = window.innerHeight || 820;
+    const refW = 430;
+    if (vw < 500) {
+      const scale = vw / refW;
+      shell.style.width = refW + 'px';
+      shell.style.height = Math.round(vh / scale) + 'px';
+      shell.style.borderRadius = '0';
+      shell.style.border = 'none';
+      shell.style.transform = scale < 0.999 ? `scale(${scale})` : '';
+    } else {
+      const refH = 820;
+      const scale = Math.min(1, (vw - 24) / (refW + 12), (vh - 24) / (refH + 12));
+      shell.style.width = refW + 'px';
+      shell.style.height = refH + 'px';
+      shell.style.borderRadius = '28px';
+      shell.style.border = '6px solid var(--device-red)';
+      shell.style.transform = scale < 0.999 ? `scale(${scale})` : '';
+    }
+  }
+
   function init() {
+    fitAppShell();
+    window.addEventListener('resize', fitAppShell);
     load();
     if (!Array.isArray(state.mistakes)) state.mistakes = [];
     Monster3DRenderer.init();
