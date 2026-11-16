@@ -5193,12 +5193,151 @@ const Monster3DRenderer = (() => {
     return padGroup;
   }
 
+  let battleBgGroup = null;
+  let currentBattleBiome = null;
+  const BATTLE_BIOME_SKIES = {
+    water:   'linear-gradient(180deg, #0284c7 0%, #38bdf8 38%, #bae6fd 72%, #0ea5e9 100%)',
+    volcano: 'linear-gradient(180deg, #450a0a 0%, #991b1b 38%, #ea580c 74%, #facc15 100%)',
+    jungle:  'linear-gradient(180deg, #0284c7 0%, #38bdf8 34%, #bbf7d0 70%, #22c55e 100%)',
+    ruins:   'linear-gradient(180deg, #1e1b4b 0%, #4338ca 38%, #a5b4fc 72%, #fde68a 100%)',
+    swamp:   'linear-gradient(180deg, #1e293b 0%, #334155 40%, #4d7c0f 75%, #84cc16 100%)'
+  };
+
+  function buildBattleField(biome) {
+    const bg = new THREE.Group();
+    const groundY = -1.16;
+
+    if (biome === 'water') {
+      const water = new THREE.Mesh(
+        new THREE.PlaneGeometry(24, 18),
+        new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.18, metalness: 0.25, transparent: true, opacity: 0.88 })
+      );
+      water.rotation.x = -Math.PI / 2;
+      water.position.set(0, groundY, -1.5);
+      bg.add(water);
+
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+      const lilyMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.5 });
+      [[-2.8, -3.4, 0.7], [3.0, -3.8, 0.85], [0.2, -4.6, 1.0]].forEach(([x, z, s]) => {
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s * 0.65, 0), rockMat);
+        rock.position.set(x, groundY + s * 0.25, z);
+        rock.scale.set(1.2, 0.7, 1.0);
+        bg.add(rock);
+      });
+      [[-1.8, -2.5, 0.45], [2.2, -2.2, 0.4], [-0.4, -3.0, 0.35]].forEach(([x, z, r]) => {
+        const pad = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.04, 16), lilyMat);
+        pad.position.set(x, groundY + 0.03, z);
+        bg.add(pad);
+      });
+    } else if (biome === 'volcano') {
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(24, 18),
+        new THREE.MeshStandardMaterial({ color: 0x292524, roughness: 0.9 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.set(0, groundY, -1.5);
+      bg.add(ground);
+
+      const lavaMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.88 });
+      const lavaPool = new THREE.Mesh(new THREE.CircleGeometry(1.6, 20), lavaMat);
+      lavaPool.rotation.x = -Math.PI / 2;
+      lavaPool.position.set(-0.2, groundY + 0.02, -3.0);
+      bg.add(lavaPool);
+
+      const mtnMat = new THREE.MeshStandardMaterial({ color: 0x44403c, roughness: 0.9 });
+      [[-2.9, -4.4, 1.6, 2.2], [2.7, -4.8, 1.9, 2.6], [0.0, -5.6, 2.3, 3.0]].forEach(([x, z, r, h]) => {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), mtnMat);
+        cone.position.set(x, groundY + h * 0.45, z);
+        bg.add(cone);
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(r * 0.22, 10, 10), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+        glow.position.set(x, groundY + h * 0.88, z);
+        bg.add(glow);
+      });
+    } else if (biome === 'jungle') {
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(24, 18),
+        new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.set(0, groundY, -1.5);
+      bg.add(ground);
+
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.55 });
+      const leafDarkMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.6 });
+      [[-2.8, -3.2, 1.0], [2.9, -3.5, 1.15], [-1.7, -4.5, 1.25], [1.6, -4.6, 1.1]].forEach(([x, z, s], idx) => {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * s, 0.16 * s, 1.7 * s, 8), trunkMat);
+        trunk.position.set(x, groundY + 0.85 * s, z);
+        bg.add(trunk);
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.85 * s, 1.1 * s, 7), idx % 2 === 0 ? leafMat : leafDarkMat);
+        crown.position.set(x, groundY + 1.85 * s, z);
+        bg.add(crown);
+        const crown2 = new THREE.Mesh(new THREE.ConeGeometry(0.65 * s, 0.9 * s, 7), leafMat);
+        crown2.position.set(x, groundY + 2.35 * s, z);
+        bg.add(crown2);
+      });
+    } else if (biome === 'ruins') {
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(24, 18),
+        new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.85 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.set(0, groundY, -1.5);
+      bg.add(ground);
+
+      const stoneMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.75 });
+      const runeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.8 });
+      [[-2.6, -3.2, 1.9], [2.7, -3.4, 2.2], [-1.3, -4.6, 2.5], [1.4, -4.6, 1.5]].forEach(([x, z, h]) => {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, h, 8), stoneMat);
+        pillar.position.set(x, groundY + h * 0.5, z);
+        bg.add(pillar);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 6, 16), runeMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(x, groundY + h * 0.75, z);
+        bg.add(ring);
+      });
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.28, 0.45), stoneMat);
+      lintel.position.set(0.05, groundY + 2.35, -4.6);
+      bg.add(lintel);
+    } else {
+      // swamp (沼地)
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(24, 18),
+        new THREE.MeshStandardMaterial({ color: 0x365314, roughness: 0.9 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.set(0, groundY, -1.5);
+      bg.add(ground);
+
+      const bogMat = new THREE.MeshBasicMaterial({ color: 0x84cc16, transparent: true, opacity: 0.65 });
+      [[-1.6, -2.7, 1.1], [2.0, -3.2, 1.3], [0.1, -4.0, 1.5]].forEach(([x, z, r]) => {
+        const pool = new THREE.Mesh(new THREE.CircleGeometry(r, 18), bogMat);
+        pool.rotation.x = -Math.PI / 2;
+        pool.position.set(x, groundY + 0.02, z);
+        bg.add(pool);
+      });
+      const deadMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
+      const sporeMat = new THREE.MeshBasicMaterial({ color: 0xc084fc });
+      [[-2.7, -3.3], [2.8, -3.6], [0.4, -4.7]].forEach(([x, z]) => {
+        const tree = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.18, 1.9, 6), deadMat);
+        tree.position.set(x, groundY + 0.95, z);
+        tree.rotation.z = x < 0 ? -0.15 : 0.15;
+        bg.add(tree);
+        const spore = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), sporeMat);
+        spore.position.set(x + (x < 0 ? 0.3 : -0.3), groundY + 1.5, z + 0.2);
+        bg.add(spore);
+      });
+    }
+    return bg;
+  }
+
   function clearActors() {
     if (titleMonster) { scene.remove(titleMonster); titleMonster = null; }
     if (playerMesh) { scene.remove(playerMesh); playerMesh = null; }
     if (enemyMesh) { scene.remove(enemyMesh); enemyMesh = null; }
     if (playerBaseMesh) { scene.remove(playerBaseMesh); playerBaseMesh = null; }
     if (enemyBaseMesh) { scene.remove(enemyBaseMesh); enemyBaseMesh = null; }
+    if (battleBgGroup) { scene.remove(battleBgGroup); battleBgGroup = null; }
     if (dexMesh) { scene.remove(dexMesh); dexMesh = null; }
     if (attackAnim && attackAnim.fxGroup) { scene.remove(attackAnim.fxGroup); attackAnim = null; }
     if (flaskGroup) flaskGroup.visible = false;
@@ -5272,12 +5411,18 @@ const Monster3DRenderer = (() => {
     requestAnimationFrame(() => onResize());
   }
 
-  function setBattleMode(pMon, eMon) {
+  function setBattleMode(pMon, eMon, keepField = false) {
     mode = 'battle';
     clearActors();
-    if (container) container.style.background = '';
+    if (!keepField || !currentBattleBiome) {
+      const biomes = Object.keys(BATTLE_BIOME_SKIES);
+      currentBattleBiome = biomes[Math.floor(Math.random() * biomes.length)];
+    }
+    if (container) container.style.background = BATTLE_BIOME_SKIES[currentBattleBiome] || '';
     if (!scene) return;
     if (fieldGrid) fieldGrid.visible = false;
+    battleBgGroup = buildBattleField(currentBattleBiome);
+    scene.add(battleBgGroup);
     // バトル画面の上部アリーナ領域（.battle-arena-hud）のサイズに合わせてカメラ比率を更新（下部メッセージウィンドウに絶対に隠れないようにする）
     requestAnimationFrame(() => onResize());
     onResize();
@@ -7281,7 +7426,7 @@ const Game = (() => {
     const newMeta = getMonsterMeta(newMon);
 
     SoundEngine.seSwitch();
-    Monster3DRenderer.setBattleMode(newMon, battle.enemy);
+    Monster3DRenderer.setBattleMode(newMon, battle.enemy, true);
     Monster3DRenderer.spawnBurst(new THREE.Vector3(-1.35, -0.2, 1.35), newMeta.fxColor || 0x38bdf8, 26);
     updateBattleHUD();
 
