@@ -4837,7 +4837,7 @@ const Monster3DRenderer = (() => {
     // 後ろ〜斜めからフラスコを投げる3Dトレーナー（人間らしい頭部・顔・髪・白衣・脚・靴つき）
     trainerGroup = new THREE.Group();
 
-    const coatMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+    const coatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.32, emissive: 0x1e293b, emissiveIntensity: 0.08 });
     const shirtMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.45 });
     const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 });
     const shoeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
@@ -4861,27 +4861,37 @@ const Monster3DRenderer = (() => {
       trainerGroup.add(sole);
     });
 
-    // インナーシャツ＆白衣の胴体
-    const innerShirt = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.20, 0.58, 16), shirtMat);
-    innerShirt.position.set(0, 0.02, -0.02);
+    // 360度ぐるりと覆う白衣（裾がフレアしたロングコート形状）
+    const coatBody = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 0.80, 20), coatMat);
+    coatBody.position.set(0, -0.07, 0);
+    trainerGroup.add(coatBody);
+
+    // 胸元（正面 -Z 側）だけ少し覗く青いインナーシャツ＆ネクタイ
+    const innerShirt = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.04), shirtMat);
+    innerShirt.position.set(0, 0.20, -0.22);
     trainerGroup.add(innerShirt);
 
-    const coatBack = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.30, 0.68, 16, 1, false, -Math.PI * 0.2, Math.PI * 1.4), coatMat);
-    coatBack.position.set(0, -0.02, 0.02);
-    trainerGroup.add(coatBack);
-
-    // 白衣の襟（左右のラペル）
-    [-0.12, 0.12].forEach((cx) => {
-      const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.28, 0.06), coatMat);
-      lapel.position.set(cx, 0.18, -0.17);
-      lapel.rotation.z = cx < 0 ? -0.18 : 0.18;
+    // 白衣の襟（左右のラペル）＆ポケット・ボタン
+    [-0.10, 0.10].forEach((cx) => {
+      const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.26, 0.05), coatMat);
+      lapel.position.set(cx, 0.18, -0.22);
+      lapel.rotation.z = cx < 0 ? -0.22 : 0.22;
       trainerGroup.add(lapel);
+
+      const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.10, 0.03), coatMat);
+      pocket.position.set(cx * 1.45, -0.18, -0.25);
+      trainerGroup.add(pocket);
+    });
+    [0.02, -0.12, -0.26].forEach((by) => {
+      const btn = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), pantsMat);
+      btn.position.set(0, by, -0.265);
+      trainerGroup.add(btn);
     });
 
-    // ベルト＆ポーチ
-    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.225, 0.06, 16), pantsMat);
-    belt.position.set(0, -0.24, 0);
-    trainerGroup.add(belt);
+    // 白衣の後ろスリット・腰ベルト（白衣と一体の帯）
+    const coatBelt = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.055, 0.04), coatMat);
+    coatBelt.position.set(0, -0.08, 0.27);
+    trainerGroup.add(coatBelt);
 
     // 首と頭部
     const trainerNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.12, 12), skinMat);
