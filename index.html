@@ -320,11 +320,13 @@
   .home-topbar {
     background: #fff;
     border-bottom: 2px solid #cbd5e1;
-    padding: 8px 12px;
+    padding: 7px 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    font-size: clamp(9.5px, 2.7vw, 11.5px);
     font-weight: 800;
   }
 
@@ -332,10 +334,15 @@
     background: #f1f5f9;
     border: 1.5px solid #94a3b8;
     border-radius: 999px;
-    padding: 3px 9px;
+    padding: 3px 7px;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
+    white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .home-nav-grid {
@@ -4707,61 +4714,122 @@ const Monster3DRenderer = (() => {
     flaskGroup.visible = false;
     scene.add(flaskGroup);
 
-    // 後ろからフラスコを投げる3Dトレーナー（白衣＆赤白キャップの背面・斜め後ろ姿）
+    // 後ろ〜斜めからフラスコを投げる3Dトレーナー（人間らしい頭部・顔・髪・白衣・脚・靴つき）
     trainerGroup = new THREE.Group();
 
-    // 白衣の胴体
     const coatMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.78, 16), coatMat);
-    torso.position.y = 0.0;
-    trainerGroup.add(torso);
-
-    // インナー襟・バックパック
-    const packMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.45 });
-    const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.46, 0.22), packMat);
-    backpack.position.set(0, 0.04, 0.22);
-    trainerGroup.add(backpack);
-
-    // 頭部
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.5 });
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 16), skinMat);
-    head.position.y = 0.58;
-    trainerGroup.add(head);
-
-    // ポケモントレーナー風キャップ（赤×白ツバ）
+    const shirtMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.45 });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 });
+    const shoeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+    const soleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xfcd5b5, roughness: 0.5 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.65 });
     const capMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35 });
-    const capDome = new THREE.Mesh(new THREE.SphereGeometry(0.255, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), capMat);
-    capDome.position.y = 0.60;
+
+    // 両脚とスニーカー
+    [-0.12, 0.12].forEach((lx) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.52, 12), pantsMat);
+      leg.position.set(lx, -0.52, 0);
+      trainerGroup.add(leg);
+
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.10, 0.24), shoeMat);
+      shoe.position.set(lx, -0.80, -0.04);
+      trainerGroup.add(shoe);
+
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.035, 0.25), soleMat);
+      sole.position.set(lx, -0.855, -0.04);
+      trainerGroup.add(sole);
+    });
+
+    // インナーシャツ＆白衣の胴体
+    const innerShirt = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.20, 0.58, 16), shirtMat);
+    innerShirt.position.set(0, 0.02, -0.02);
+    trainerGroup.add(innerShirt);
+
+    const coatBack = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.30, 0.68, 16, 1, false, -Math.PI * 0.2, Math.PI * 1.4), coatMat);
+    coatBack.position.set(0, -0.02, 0.02);
+    trainerGroup.add(coatBack);
+
+    // 白衣の襟（左右のラペル）
+    [-0.12, 0.12].forEach((cx) => {
+      const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.28, 0.06), coatMat);
+      lapel.position.set(cx, 0.18, -0.17);
+      lapel.rotation.z = cx < 0 ? -0.18 : 0.18;
+      trainerGroup.add(lapel);
+    });
+
+    // ベルト＆ポーチ
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.225, 0.06, 16), pantsMat);
+    belt.position.set(0, -0.24, 0);
+    trainerGroup.add(belt);
+
+    // 首と頭部
+    const trainerNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.12, 12), skinMat);
+    trainerNeck.position.set(0, 0.35, 0);
+    trainerGroup.add(trainerNeck);
+
+    const trainerHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 18), skinMat);
+    trainerHead.position.set(0, 0.54, 0);
+    trainerGroup.add(trainerHead);
+
+    // 髪の毛（後頭部〜サイド）
+    const hairBack = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 14, -Math.PI * 0.15, Math.PI * 1.3, Math.PI * 0.22, Math.PI * 0.65), hairMat);
+    hairBack.position.set(0, 0.54, 0.02);
+    trainerGroup.add(hairBack);
+
+    // 目（白目＋黒目）で人間らしさを明確に表現（-Z方向＝敵方向が正面）
+    [-0.075, 0.075].forEach((ex) => {
+      const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.036, 10, 10), soleMat);
+      eyeWhite.position.set(ex, 0.54, -0.195);
+      trainerGroup.add(eyeWhite);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.021, 10, 10), pantsMat);
+      pupil.position.set(ex, 0.54, -0.218);
+      trainerGroup.add(pupil);
+    });
+
+    // トレーナーキャップ（赤帽体＋白フロント＋ツバ）
+    const capDome = new THREE.Mesh(new THREE.SphereGeometry(0.238, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.54), capMat);
+    capDome.position.set(0, 0.57, 0);
     trainerGroup.add(capDome);
 
+    const capBadge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.04), soleMat);
+    capBadge.position.set(0, 0.66, -0.205);
+    trainerGroup.add(capBadge);
+
     const visor = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.26, 0.26, 0.04, 16, 1, false, -Math.PI * 0.35, Math.PI * 0.7),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+      new THREE.CylinderGeometry(0.25, 0.25, 0.035, 16, 1, false, Math.PI * 0.65, Math.PI * 0.7),
+      capMat
     );
-    visor.position.set(0.06, 0.60, -0.12);
+    visor.position.set(0, 0.59, -0.10);
     trainerGroup.add(visor);
 
-    // 左腕（添え手）
-    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.48, 12), coatMat);
-    leftArm.position.set(-0.34, 0.08, -0.05);
-    leftArm.rotation.z = 0.35;
-    leftArm.rotation.x = 0.3;
+    // 左腕（自然な構え＋手）
+    const leftArm = new THREE.Group();
+    leftArm.position.set(-0.27, 0.24, 0);
+    const leftSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.40, 12), coatMat);
+    leftSleeve.position.set(0, -0.18, 0);
+    leftArm.add(leftSleeve);
+    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.068, 12, 12), skinMat);
+    leftHand.position.set(0, -0.40, 0);
+    leftArm.add(leftHand);
+    leftArm.rotation.z = 0.25;
+    leftArm.rotation.x = 0.22;
     trainerGroup.add(leftArm);
 
-    // 右腕（フラスコ投擲スイング用の肩ピボット）
+    // 右腕（フラスコ投擲スイング用の肩ピボット＋手）
     trainerArmPivot = new THREE.Group();
-    trainerArmPivot.position.set(0.34, 0.28, 0.0);
+    trainerArmPivot.position.set(0.27, 0.24, 0.0);
 
-    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.54, 12), coatMat);
-    rightArm.position.set(0, -0.22, 0);
+    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.062, 0.44, 12), coatMat);
+    rightArm.position.set(0, -0.20, 0);
     trainerArmPivot.add(rightArm);
 
-    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.095, 12, 12), skinMat);
-    rightHand.position.set(0, -0.50, 0);
+    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), skinMat);
+    rightHand.position.set(0, -0.44, 0);
     trainerArmPivot.add(rightHand);
 
     trainerGroup.add(trainerArmPivot);
-    trainerGroup.scale.setScalar(0.88);
+    trainerGroup.scale.setScalar(0.90);
     trainerGroup.visible = false;
     scene.add(trainerGroup);
   }
@@ -5167,40 +5235,41 @@ const Monster3DRenderer = (() => {
   function applyBattlePositions() {
     if (!playerMesh || !enemyMesh || !playerBaseMesh || !enemyBaseMesh || !camera) return;
     if (calcLayoutActive) {
-      // 電卓表示時：左上と右下のHPカードを避け、左下＆右上の空きスペースにモンスターがくっきり収まるよう配置調整
-      const px = -1.52, py = -0.30, pz = 1.35;
-      const ex = 1.46, ey = 0.46, ez = -1.10;
+      // 電卓表示時：左上と右下のHPカードを避け、相棒も敵も全体がしっかり収まる配置
+      const px = -1.02, py = -0.28, pz = 0.92;
+      const ex = 1.05, ey = 0.44, ez = -0.92;
       playerMesh.position.set(px, py, pz);
       playerMesh.userData.baseX = px;
       playerMesh.userData.baseY = py;
       playerMesh.userData.baseZ = pz;
-      playerBaseMesh.position.set(px, py - 0.65, pz);
+      playerBaseMesh.position.set(px, py - 0.64, pz);
 
       enemyMesh.position.set(ex, ey, ez);
       enemyMesh.userData.baseX = ex;
       enemyMesh.userData.baseY = ey;
       enemyMesh.userData.baseZ = ez;
-      enemyBaseMesh.position.set(ex, ey - 0.68, ez);
+      enemyBaseMesh.position.set(ex, ey - 0.66, ez);
 
-      camera.position.set(0.0, 1.32, 5.45);
-      camera.lookAt(0.0, -0.04, 0.0);
+      camera.position.set(0.0, 1.44, 6.05);
+      camera.lookAt(0.0, -0.02, 0.0);
     } else {
-      const px = -1.35, py = -0.35, pz = 1.35;
-      const ex = 1.25, ey = 0.48, ez = -1.15;
+      // 通常時：スマホ縦画面でも相棒の全体（台座含む）が見切れないバランス配置
+      const px = -0.92, py = -0.30, pz = 0.92;
+      const ex = 1.00, ey = 0.44, ez = -0.95;
       playerMesh.position.set(px, py, pz);
       playerMesh.userData.baseX = px;
       playerMesh.userData.baseY = py;
       playerMesh.userData.baseZ = pz;
-      playerBaseMesh.position.set(px, -1.02, pz);
+      playerBaseMesh.position.set(px, -0.95, pz);
 
       enemyMesh.position.set(ex, ey, ez);
       enemyMesh.userData.baseX = ex;
       enemyMesh.userData.baseY = ey;
       enemyMesh.userData.baseZ = ez;
-      enemyBaseMesh.position.set(ex, -0.22, ez);
+      enemyBaseMesh.position.set(ex, -0.24, ez);
 
-      camera.position.set(0.0, 1.35, 5.2);
-      camera.lookAt(0.0, -0.05, 0.0);
+      camera.position.set(0.0, 1.46, 5.85);
+      camera.lookAt(0.0, -0.04, 0.0);
     }
   }
 
@@ -5222,8 +5291,8 @@ const Monster3DRenderer = (() => {
     onResize();
 
     // ポケモンのバトル構図：左手前に自分の相棒（シアン縁の白ディスク台座）、右奥に敵（レッド縁の白ディスク台座）
-    const pScale = (pMon.ivScale || 1.0) * 0.72;
-    const eScale = (eMon.ivScale || 1.0) * 0.78;
+    const pScale = (pMon.ivScale || 1.0) * 0.64;
+    const eScale = (eMon.ivScale || 1.0) * 0.72;
 
     playerMesh = buildMonsterMesh(pMon, pMon.isIsotope, pScale);
     scene.add(playerMesh);
@@ -5462,14 +5531,14 @@ const Monster3DRenderer = (() => {
       onFinishCallback(willCatch);
       return;
     }
-    const trainerPos = new THREE.Vector3(-1.95, -0.78, 2.02);
-    const releasePos = new THREE.Vector3(-1.35, -0.18, 1.55);
+    const trainerPos = new THREE.Vector3(-1.32, -0.48, 1.75);
+    const releasePos = new THREE.Vector3(-0.92, -0.10, 1.35);
     const targetPos = enemyMesh.position.clone().add(new THREE.Vector3(0, -0.12, 0));
 
     // トレーナーを左手前に登場させ、振りかぶりポーズにセット
     if (trainerGroup && trainerArmPivot) {
-      trainerGroup.position.set(trainerPos.x - 0.35, trainerPos.y, trainerPos.z);
-      trainerGroup.rotation.set(0, -0.55, 0);
+      trainerGroup.position.set(trainerPos.x - 0.25, trainerPos.y, trainerPos.z);
+      trainerGroup.rotation.set(0, -0.65, 0);
       trainerArmPivot.rotation.set(1.15, 0, -0.25);
       trainerGroup.visible = true;
     }
