@@ -2281,10 +2281,19 @@ const SoundEngine = (() => {
         playTone(f, 'sine', now + i * 0.06, 0.08, 0.2, f * 1.45);
       });
       playNoise(now + 0.08, 0.25, 0.15, 1400);
-    } else if (style === 'metallic') {
+    } else if (style === 'metallic' || style === 'slash') {
       playTone(920, 'triangle', now, 0.28, 0.24, 460);
       playTone(1380, 'sine', now + 0.03, 0.32, 0.18, 690);
       playNoise(now, 0.12, 0.2, 2400);
+    } else if (style === 'hydro') {
+      playNoise(now, 0.45, 0.24, 900);
+      playTone(320, 'sine', now, 0.36, 0.22, 680);
+      playTone(480, 'triangle', now + 0.05, 0.30, 0.16, 220);
+    } else if (style === 'poison') {
+      [260, 390, 230, 440].forEach((f, i) => {
+        playTone(f, 'sawtooth', now + i * 0.07, 0.09, 0.14, f * 0.75);
+      });
+      playNoise(now + 0.06, 0.28, 0.14, 1100);
     } else if (style === 'radiation') {
       playTone(220, 'sawtooth', now, 0.38, 0.22, 880);
       playTone(880, 'sine', now + 0.05, 0.35, 0.18, 220);
@@ -2692,7 +2701,7 @@ function getElementMoves(z) {
     nonmetal:   { suffix: '共有結合プラズマ弾', desc: `${el.name}の分子エネルギーバースト！`, style: 'beam', c1: 0x38bdf8, c2: 0xa855f7,
                   m2Name: `${el.sym}・同素体シフトチャージ`, m2Desc: '分子構造を再配列し酸性武装＆次ターン威力1.35倍！', m2Style: 'plasma', m2Eff: 'acid_buff',
                   m3Name: `${el.name}・コバレントノヴァ`, m3Desc: `共有結合エネルギーを全解放する超高温プラズマ爆発！`, m3Style: 'explosion' },
-    transition: { suffix: 'd軌道・メタルスラッシュ', desc: `${el.name}の遷移金属触媒レーザー斬撃！`, style: 'metallic', c1: 0x94a3b8, c2: 0x38bdf8,
+    transition: { suffix: 'd軌道・メタルスラッシュ', desc: `${el.name}の遷移金属触媒レーザー斬撃！`, style: 'slash', c1: 0x94a3b8, c2: 0x38bdf8,
                   m2Name: `${el.sym}・錯イオン触媒シフト`, m2Desc: '活性化エネルギーを下げる触媒作用で次ターン威力1.4倍＆HP回復！', m2Style: 'crystal', m2Eff: 'catalyst',
                   m3Name: `${el.name}・d軌道アルティメット砲`, m3Desc: `有色錯イオンの輝きと共に放つ超電磁メタルカノン！`, m3Style: 'beam' }
   };
@@ -2754,9 +2763,9 @@ const RECIPES = [
     desc: '【道具】相棒HP全回復 ／ 【相棒】極性分子の水素結合ジェットで戦う万能化合物モンスター！',
     cost: { 1: 2, 8: 1 }, effect: 'heal_full', chemType: null,
     moveName: 'ハイドロ・水素結合ジェット', moveDesc: '折れ線形極性分子の超高圧水流レーザー！',
-    fxStyle: 'cold', fxColor: 0x38bdf8, fxColor2: 0xe0f2fe,
+    fxStyle: 'hydro', fxColor: 0x38bdf8, fxColor2: 0xe0f2fe,
     moves: [
-      { name: 'ハイドロ・水素結合ジェット', desc: '折れ線形極性分子の超高圧水流レーザー！', fxStyle: 'cold', fxColor: 0x38bdf8, fxColor2: 0xe0f2fe, power: 1.0, tag: '⚔️基本(威力100)', bonusEffect: null },
+      { name: 'ハイドロ・水素結合ジェット', desc: '折れ線形極性分子の超高圧水流レーザー！', fxStyle: 'hydro', fxColor: 0x38bdf8, fxColor2: 0xe0f2fe, power: 1.0, tag: '⚔️基本(威力100)', bonusEffect: null },
       { name: '水和シェル・自己電離ヒール', desc: '極性溶媒の水和力でHP30%回復＆状態リフレッシュ！', fxStyle: 'plasma', fxColor: 0x67e8f9, fxColor2: 0xffffff, power: 0.90, tag: '🧪特性(HP回復)', bonusEffect: 'heal_self' },
       { name: '超臨界水・ハイドロノヴァ', desc: '374℃・22MPaの超臨界水がすべてを分解する激流砲！', fxStyle: 'explosion', fxColor: 0x0284c7, fxColor2: 0xfacc15, power: 1.28, tag: '💥奥義(威力128)', bonusEffect: 'ultimate' }
     ]
@@ -3105,9 +3114,9 @@ const RECIPES = [
     desc: '【道具】敵に60ダメージ＆酸武装 ／ 【相棒】多くの金属イオンを黒色硫化物として沈殿させる還元蛇！',
     cost: { 1: 2, 16: 1 }, effect: 'dmg_60', chemType: 'acid',
     moveName: '硫化物沈殿・ブラックヴェノム', moveDesc: 'CuSやPbSの黒色沈殿を発生させる強還元ガス波！',
-    fxStyle: 'acid', fxColor: 0x84cc16, fxColor2: 0x334155,
+    fxStyle: 'poison', fxColor: 0x84cc16, fxColor2: 0xa855f7,
     moves: [
-      { name: '硫化物沈殿・ブラックヴェノム', desc: 'CuSやPbSの黒色沈殿を発生させる強還元ガス波！', fxStyle: 'acid', fxColor: 0x84cc16, fxColor2: 0x334155, power: 1.0, tag: '⚔️基本(威力100)', bonusEffect: null },
+      { name: '硫化物沈殿・ブラックヴェノム', desc: 'CuSやPbSの黒色沈殿を発生させる強還元ガス波！', fxStyle: 'poison', fxColor: 0x84cc16, fxColor2: 0xa855f7, power: 1.0, tag: '⚔️基本(威力100)', bonusEffect: null },
       { name: '単体硫黄析出・レドックスガード', desc: 'SO₂と反応してSを析出し酸性武装＆強化！', fxStyle: 'plasma', fxColor: 0xfacc15, fxColor2: 0x84cc16, power: 0.92, tag: '🧪特性(酸&強化)', bonusEffect: 'acid_buff' },
       { name: 'キップの装置・ハイドロサルファ砲', desc: 'FeSと希硫酸から連続発生させた高圧硫化水素の奔流！', fxStyle: 'explosion', fxColor: 0x4d7c0f, fxColor2: 0xfacc15, power: 1.28, tag: '💥奥義(威力128)', bonusEffect: 'ultimate' }
     ]
@@ -5357,35 +5366,42 @@ const Monster3DRenderer = (() => {
     const typeData = TYPE_INFO[el.type] || TYPE_INFO.nonmetal;
     const group = new THREE.Group();
 
-    // ベースカラー (同位体はレアなホログラム/ネオンカラーにシフト)
+    // ベースカラー (同位体はホログラムカラー、通常も原子番号ごとにしっかり色相・明度を変えて差別化)
     const baseColor = new THREE.Color(typeData.color);
     if (isIsotope) {
       baseColor.offsetHSL(0.38, 0.25, 0.08);
     } else {
-      // 同じ族内でも原子番号で微妙に色相・明度を変える
-      baseColor.offsetHSL(((z * 17) % 100) / 1000 - 0.05, 0, ((z % 5) - 2) * 0.03);
+      baseColor.offsetHSL(((z * 37) % 100) / 380 - 0.13, ((z % 3) - 1) * 0.08, ((z % 5) - 2) * 0.045);
     }
 
-    // 1. 【コア】族と原子番号に応じた形状と質感
+    // 1. 【コア】10種類の立体シルエットから元素ごとに多彩に生成
+    const typeOffsets = { noble: 3, halogen: 4, transition: 1, post: 5, alkali: 0, alkaline: 6, metalloid: 7, lanthanoid: 8, actinoid: 8, nonmetal: 2 };
+    const shapeIdx = (z + (typeOffsets[el.type] || 0)) % 10;
     let coreGeo;
-    const shapeSeed = z % 5;
-    if (el.type === 'noble') {
-      coreGeo = new THREE.IcosahedronGeometry(0.65, 1);
-    } else if (el.type === 'transition' || el.type === 'post') {
-      coreGeo = shapeSeed === 0 ? new THREE.OctahedronGeometry(0.7, 0)
-              : shapeSeed === 1 ? new THREE.DodecahedronGeometry(0.66, 0)
-              : new THREE.BoxGeometry(0.92, 0.92, 0.92);
-    } else if (el.type === 'halogen') {
-      coreGeo = new THREE.TetrahedronGeometry(0.78, 0);
-    } else if (el.type === 'actinoid' || el.type === 'lanthanoid') {
-      coreGeo = new THREE.TorusKnotGeometry(0.42, 0.16, 128, 16, (z % 3) + 2, 3);
+    if (shapeIdx === 0) {
+      coreGeo = new THREE.SphereGeometry(0.62, 36, 28);
+    } else if (shapeIdx === 1) {
+      coreGeo = new THREE.OctahedronGeometry(0.70, 0);
+    } else if (shapeIdx === 2) {
+      coreGeo = new THREE.DodecahedronGeometry(0.64, 0);
+    } else if (shapeIdx === 3) {
+      coreGeo = new THREE.IcosahedronGeometry(0.64, 1);
+    } else if (shapeIdx === 4) {
+      coreGeo = new THREE.TetrahedronGeometry(0.76, 0);
+    } else if (shapeIdx === 5) {
+      coreGeo = new THREE.CylinderGeometry(0.54, 0.54, 0.90, 6);
+    } else if (shapeIdx === 6) {
+      coreGeo = new THREE.CylinderGeometry(0.18, 0.62, 0.96, 8);
+    } else if (shapeIdx === 7) {
+      coreGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.84, 18);
+    } else if (shapeIdx === 8) {
+      coreGeo = new THREE.TorusKnotGeometry(0.40, 0.15, 96, 14, (z % 3) + 2, 3);
     } else {
-      coreGeo = shapeSeed % 2 === 0 ? new THREE.SphereGeometry(0.65, 48, 32) : new THREE.DodecahedronGeometry(0.65, 0);
+      coreGeo = new THREE.BoxGeometry(0.84, 0.84, 0.84);
     }
 
     let coreMat;
     if (el.type === 'noble') {
-      // 貴ガス: ガラス状・半透明（クリアコート＋環境反射）
       coreMat = new THREE.MeshPhysicalMaterial({
         color: baseColor,
         transparent: true,
@@ -5399,7 +5415,6 @@ const Monster3DRenderer = (() => {
         emissiveIntensity: 0.25
       });
     } else if (el.type === 'transition' || el.type === 'post' || el.type === 'alkaline') {
-      // 遷移金属等: 環境を映し込む鏡面メタリック
       coreMat = new THREE.MeshPhysicalMaterial({
         color: baseColor,
         metalness: 0.92,
@@ -5424,7 +5439,96 @@ const Monster3DRenderer = (() => {
     }
 
     const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    if (shapeIdx === 9) {
+      // 星型多面体（回転ボックス重ね）
+      const subBox = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), coreMat);
+      subBox.rotation.set(Math.PI / 4, Math.PI / 4, 0);
+      coreMesh.add(subBox);
+    }
     group.add(coreMesh);
+
+    // 1.5 【モンスターの目・顔＆固有パーツ（翼・角・棘・シールド）】で被りをなくす
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pupilMat = new THREE.MeshBasicMaterial({ color: isIsotope ? 0xec4899 : 0x0f172a });
+    const eyeStyle = z % 5;
+    if (eyeStyle === 0 || eyeStyle === 4) {
+      [-0.20, 0.20].forEach((ex) => {
+        const ew = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), eyeMat);
+        ew.position.set(ex, 0.12, 0.56);
+        const ep = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), pupilMat);
+        ep.position.set(ex, 0.12, 0.64);
+        group.add(ew); group.add(ep);
+      });
+    } else if (eyeStyle === 1) {
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.13, 0.14), new THREE.MeshBasicMaterial({ color: isIsotope ? 0xfde047 : 0x67e8f9 }));
+      visor.position.set(0, 0.14, 0.56);
+      group.add(visor);
+    } else if (eyeStyle === 2) {
+      const ew = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), eyeMat);
+      ew.position.set(0, 0.14, 0.56);
+      const ep = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), pupilMat);
+      ep.position.set(0, 0.14, 0.68);
+      group.add(ew); group.add(ep);
+    } else {
+      [-0.22, 0.22].forEach((ex, idx) => {
+        const slit = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.12), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        slit.position.set(ex, 0.14, 0.56);
+        slit.rotation.z = idx === 0 ? -0.24 : 0.24;
+        group.add(slit);
+      });
+    }
+
+    const accentColor = baseColor.clone().offsetHSL(0.14, 0.15, 0.08);
+    const accentMat = new THREE.MeshPhysicalMaterial({ color: accentColor, roughness: 0.25, metalness: 0.45, clearcoat: 0.7 });
+    const crestStyle = (z * 3 + (el.period || 1)) % 6;
+    if (crestStyle === 0) {
+      // 翼パーツ
+      [-1, 1].forEach((side) => {
+        const wing = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.85, 4), accentMat);
+        wing.position.set(side * 0.72, 0.12, -0.08);
+        wing.rotation.z = -side * 1.15;
+        wing.rotation.y = side * 0.3;
+        group.add(wing);
+      });
+    } else if (crestStyle === 1) {
+      // ツインホーン（角）
+      [-1, 1].forEach((side) => {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.55, 6), accentMat);
+        horn.position.set(side * 0.34, 0.72, 0.05);
+        horn.rotation.z = -side * 0.45;
+        group.add(horn);
+      });
+    } else if (crestStyle === 2) {
+      // 結晶スパイク（上下左右）
+      [[0, 0.78, 0, 0], [0, -0.78, 0, Math.PI], [0.78, 0, 0, -Math.PI / 2], [-0.78, 0, 0, Math.PI / 2]].forEach(([x, y, zPos, rz]) => {
+        const sp = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.42, 5), accentMat);
+        sp.position.set(x, y, zPos);
+        sp.rotation.z = rz;
+        group.add(sp);
+      });
+    } else if (crestStyle === 3) {
+      // 王冠・頭頂クリスタル
+      const crown = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+      crown.position.set(0, 0.84, 0);
+      crown.scale.set(0.8, 1.35, 0.8);
+      group.add(crown);
+    } else if (crestStyle === 4) {
+      // 左右フローティングシールド
+      [-1, 1].forEach((side) => {
+        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.62, 0.44), accentMat);
+        sh.position.set(side * 0.82, 0.02, 0.12);
+        sh.rotation.y = side * 0.35;
+        group.add(sh);
+      });
+    } else {
+      // 肩キャノン・アンテナポッド
+      [-1, 1].forEach((side) => {
+        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.46, 10), accentMat);
+        pod.position.set(side * 0.62, 0.44, -0.06);
+        pod.rotation.x = Math.PI / 2.6;
+        group.add(pod);
+      });
+    }
 
     // 2. 【オーラ・シェル】外殻ワイヤーフレームやリング
     const shellGroup = new THREE.Group();
@@ -6002,117 +6106,150 @@ const Monster3DRenderer = (() => {
     shockwaves.push({ mesh: ring, scale: 0.4, maxScale, speed, life: 1.0 });
   }
 
-  // 元素・化合物に特化した3D攻撃エフェクト演出（10スタイル＋必殺技強化）
-  function buildAttackEffectGroup(style, c1Hex, c2Hex, isUlt = false) {
+  // 元素・化合物に特化した3D攻撃エフェクト演出（ビーム・ハイドロポンプ・火炎・斬撃・氷魔法・電撃・毒・隕石爆発など12種）
+  function buildAttackEffectGroup(style, c1Hex, c2Hex, isUlt = false, dist = 3.2) {
     const g = new THREE.Group();
-    const mat1 = new THREE.MeshBasicMaterial({ color: c1Hex, transparent: true, opacity: 0.94 });
-    const mat2 = new THREE.MeshBasicMaterial({ color: c2Hex, transparent: true, opacity: 0.88 });
-    const matCore = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+    const mat1 = new THREE.MeshBasicMaterial({ color: c1Hex, transparent: true, opacity: 0.94, blending: THREE.AdditiveBlending, depthWrite: false });
+    const mat2 = new THREE.MeshBasicMaterial({ color: c2Hex, transparent: true, opacity: 0.88, blending: THREE.AdditiveBlending, depthWrite: false });
+    const matCore = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.96, blending: THREE.AdditiveBlending, depthWrite: false });
 
-    if (style === 'explosion') {
-      // 超新星メテオ・多層衝撃シェル＋8方位スパーク
-      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.46, 1), mat1));
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), matCore));
+    if (style === 'beam' || style === 'hydro') {
+      // 連続照射レーザービーム / 高圧水流ハイドロポンプ（攻撃側から敵まで貫通する長尺ビーム＋螺旋リング）
+      const len = Math.max(2.2, dist);
+      const rCore = style === 'hydro' ? 0.14 : 0.09;
+      const rOuter = style === 'hydro' ? 0.28 : 0.20;
+      const coreCyl = new THREE.Mesh(new THREE.CylinderGeometry(rCore, rCore * 1.2, len, 14), matCore);
+      coreCyl.rotation.x = Math.PI / 2;
+      coreCyl.position.z = len * 0.5;
+      g.add(coreCyl);
+
+      const outerCyl = new THREE.Mesh(new THREE.CylinderGeometry(rOuter, rOuter * 1.35, len, 16, 1, true), mat1);
+      outerCyl.rotation.x = Math.PI / 2;
+      outerCyl.position.z = len * 0.5;
+      g.add(outerCyl);
+
+      for (let i = 0; i < 5; i++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.30 + (i % 2) * 0.12, style === 'hydro' ? 0.055 : 0.035, 8, 24), mat2);
+        ring.position.z = (i + 0.5) * (len / 5);
+        g.add(ring);
+      }
+      if (style === 'hydro') {
+        for (let i = 0; i < 8; i++) {
+          const drop = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), mat2);
+          const a = (i / 8) * Math.PI * 2;
+          drop.position.set(Math.cos(a) * 0.42, Math.sin(a) * 0.42, len * 0.85);
+          g.add(drop);
+        }
+      }
+    } else if (style === 'slash') {
+      // クロス斬撃・発光ブレード弧（X字に交差する鋭いエネルギー刃）
+      [-0.65, 0.65].forEach((rz, idx) => {
+        const arc = new THREE.Mesh(new THREE.TorusGeometry(0.92, 0.075, 8, 28, Math.PI * 0.85), idx === 0 ? matCore : mat1);
+        arc.rotation.z = rz;
+        g.add(arc);
+        const edge = new THREE.Mesh(new THREE.TorusGeometry(0.98, 0.04, 6, 24, Math.PI * 0.78), mat2);
+        edge.rotation.z = rz;
+        g.add(edge);
+      });
+    } else if (style === 'explosion') {
+      // 隕石メテオ・超新星（上空から落下して着弾する巨大火球＋衝撃リング）
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.54, 1), mat1));
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.30, 14, 14), matCore));
       for (let r = 0; r < 2; r++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.58 + r * 0.16, 0.06, 8, 28), r === 0 ? mat2 : mat1);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.68 + r * 0.18, 0.06, 8, 28), r === 0 ? mat2 : mat1);
         ring.rotation.set(Math.PI / 3 + r * 0.8, r * 0.7, 0);
         g.add(ring);
       }
-      for (let i = 0; i < 8; i++) {
-        const spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), i % 2 === 0 ? mat2 : mat1);
-        const a = (i / 8) * Math.PI * 2;
-        spark.position.set(Math.cos(a) * 0.56, Math.sin(a) * 0.56, (i % 2 - 0.5) * 0.25);
-        g.add(spark);
-      }
     } else if (style === 'flame') {
-      // 火炎旋風・螺旋コーン＋炎スパーク
-      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), mat1));
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.95, 12, 1, true), mat2);
-      cone.rotation.x = Math.PI / 2;
-      cone.position.z = -0.2;
-      g.add(cone);
+      // 連続火炎放射（5連の膨張する炎弾ストリーム）
       for (let i = 0; i < 5; i++) {
-        const spark = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0), mat2);
-        const a = (i / 5) * Math.PI * 2;
-        spark.position.set(Math.cos(a) * 0.44, Math.sin(a) * 0.44, 0.12);
-        g.add(spark);
+        const fb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22 + i * 0.055, 1), i % 2 === 0 ? mat1 : mat2);
+        fb.position.z = i * 0.45;
+        g.add(fb);
       }
+      const coreCone = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.5, 12, 1, true), matCore);
+      coreCone.rotation.x = Math.PI / 2;
+      coreCone.position.z = 0.8;
+      g.add(coreCone);
     } else if (style === 'electric') {
-      // 高電圧稲妻ボルト＋3重プラズマリング
-      const bolt1 = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), matCore);
-      bolt1.scale.set(0.65, 0.65, 2.2);
-      g.add(bolt1);
-      for (let i = 0; i < 3; i++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42 + i * 0.12, 0.038, 6, 20), i % 2 === 0 ? mat1 : mat2);
-        ring.rotation.set(i * 1.05, i * 0.9, 0);
+      // 落雷稲妻（ギザギザの多段ボルト＋放電リング）
+      const pts = [
+        new THREE.Vector3(0, 2.4, 0),
+        new THREE.Vector3(0.32, 1.6, 0.15),
+        new THREE.Vector3(-0.28, 0.9, -0.1),
+        new THREE.Vector3(0.22, 0.3, 0.08),
+        new THREE.Vector3(0, 0, 0)
+      ];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const segLen = pts[i].distanceTo(pts[i + 1]);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, segLen, 8), i % 2 === 0 ? matCore : mat1);
+        seg.position.copy(pts[i]).add(pts[i + 1]).multiplyScalar(0.5);
+        seg.lookAt(pts[i + 1]);
+        seg.rotateX(Math.PI / 2);
+        g.add(seg);
+      }
+      for (let i = 0; i < 2; i++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55 + i * 0.25, 0.045, 6, 24), mat2);
+        ring.rotation.x = Math.PI / 2;
         g.add(ring);
       }
-    } else if (style === 'plasma') {
-      // 量子プラズマ・発光コア＋4軸軌道リング
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), matCore));
-      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), mat1));
-      for (let i = 0; i < 4; i++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.032, 6, 24), i % 2 === 0 ? mat2 : mat1);
-        ring.rotation.set(i * 0.78, i * 1.1, 0);
-        g.add(ring);
+    } else if (style === 'cold') {
+      // 氷魔法ブリザード（足元の六角魔法陣＋頭上から降り注ぐ6本の氷槍）
+      const circle = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.92, 6), mat2);
+      circle.rotation.x = -Math.PI / 2;
+      circle.position.y = -0.35;
+      circle.material.side = THREE.DoubleSide;
+      g.add(circle);
+      for (let i = 0; i < 6; i++) {
+        const spear = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.85, 5), i % 2 === 0 ? matCore : mat1);
+        const a = (i / 6) * Math.PI * 2;
+        spear.position.set(Math.cos(a) * 0.45, 0.65 + (i % 2) * 0.35, Math.sin(a) * 0.45);
+        spear.rotation.x = Math.PI;
+        g.add(spear);
+      }
+    } else if (style === 'poison' || style === 'acid') {
+      // 毒・強酸ミアズマ（渦巻きながら湧き上がる毒沼バブルクラスター）
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.85, 24), mat1);
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.y = -0.45;
+      pool.material.side = THREE.DoubleSide;
+      g.add(pool);
+      for (let i = 0; i < 9; i++) {
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.14 + (i % 3) * 0.05, 12, 12), i % 2 === 0 ? mat2 : mat1);
+        const a = (i / 9) * Math.PI * 2;
+        b.position.set(Math.cos(a) * 0.48, -0.2 + (i % 3) * 0.28, Math.sin(a) * 0.48);
+        g.add(b);
       }
     } else if (style === 'crystal') {
       // 六角結晶プリズムクラスター（放射6本氷柱）
-      g.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), matCore));
+      g.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), matCore));
       for (let i = 0; i < 6; i++) {
         const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), i % 2 === 0 ? mat1 : mat2);
         const a = (i / 6) * Math.PI * 2;
-        shard.position.set(Math.cos(a) * 0.40, Math.sin(a) * 0.40, 0);
-        shard.scale.set(0.55, 1.65, 0.55);
+        shard.position.set(Math.cos(a) * 0.42, Math.sin(a) * 0.42, 0);
+        shard.scale.set(0.55, 1.7, 0.55);
         shard.rotation.z = a + Math.PI / 2;
         g.add(shard);
       }
-    } else if (style === 'cold') {
-      // 絶対零度・雪結晶スター＋冷気リング
-      for (let i = 0; i < 3; i++) {
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.11, 0.11), i === 0 ? matCore : mat1);
-        bar.rotation.z = (i * Math.PI) / 3;
-        g.add(bar);
-      }
-      const frostRing = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.04, 6, 24), mat2);
-      g.add(frostRing);
-    } else if (style === 'acid') {
-      // 強酸腐食バブルクラスター
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), mat1));
-      for (let i = 0; i < 7; i++) {
-        const b = new THREE.Mesh(new THREE.SphereGeometry(0.15 + (i % 2) * 0.05, 12, 12), i % 2 === 0 ? mat2 : mat1);
-        const a = (i / 7) * Math.PI * 2;
-        b.position.set(Math.cos(a) * 0.44, Math.sin(a) * 0.44, (i % 3 - 1) * 0.18);
-        g.add(b);
-      }
-    } else if (style === 'radiation') {
-      // 核融合・二重ヘリックス＋α線コーン
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), matCore));
-      const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(0.32, 0.055, 36, 8, 2, 3), mat1);
-      g.add(knot);
-      const aura = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.035, 8, 28), mat2);
-      g.add(aura);
     } else if (style === 'metallic') {
-      // 超硬合金ブレード・回転ソー＋閃光リング
-      const blade1 = new THREE.Mesh(new THREE.TorusKnotGeometry(0.30, 0.085, 36, 8, 2, 3), mat1);
-      const blade2 = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.62, 6), mat2);
+      // 超硬合金ブレード・回転ソー
+      const blade1 = new THREE.Mesh(new THREE.TorusKnotGeometry(0.32, 0.085, 36, 8, 2, 3), mat1);
+      const blade2 = new THREE.Mesh(new THREE.RingGeometry(0.38, 0.66, 6), mat2);
       blade2.material.side = THREE.DoubleSide;
       g.add(blade1);
       g.add(blade2);
     } else {
-      // beam: 収束レーザー砲・細長ビーム柱＋3連加速リング
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.30, 16, 16), matCore));
-      const beamCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.35, 14), mat1);
-      beamCyl.rotation.x = Math.PI / 2;
-      g.add(beamCyl);
-      for (let i = -1; i <= 1; i++) {
-        const r = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 6, 20), mat2);
-        r.position.z = i * 0.32;
-        g.add(r);
+      // plasma / radiation: 量子二重螺旋プラズマ弾
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), matCore));
+      g.add(new THREE.Mesh(new THREE.TorusKnotGeometry(0.34, 0.06, 48, 8, 2, 3), mat1));
+      for (let i = 0; i < 3; i++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.035, 6, 24), mat2);
+        ring.rotation.set(i * 1.05, i * 1.1, 0);
+        g.add(ring);
       }
     }
     if (isUlt) {
-      g.scale.setScalar(1.38);
+      g.scale.setScalar(1.32);
     }
     return g;
   }
@@ -6149,9 +6286,14 @@ const Monster3DRenderer = (() => {
 
     const startPos = attackerMesh.position.clone();
     const targetPos = defenderMesh.position.clone();
-    const fxGroup = buildAttackEffectGroup(style, c1, c2, isUlt);
-    fxGroup.position.copy(startPos);
-    if (style === 'beam' || style === 'electric' || style === 'flame') {
+    const dist = startPos.distanceTo(targetPos);
+    const fxGroup = buildAttackEffectGroup(style, c1, c2, isUlt, dist);
+    if (style === 'slash' || style === 'electric' || style === 'cold' || style === 'poison' || style === 'acid') {
+      fxGroup.position.copy(targetPos);
+    } else if (style === 'explosion') {
+      fxGroup.position.set(targetPos.x - 0.9, targetPos.y + 3.2, targetPos.z);
+    } else {
+      fxGroup.position.copy(startPos);
       fxGroup.lookAt(targetPos);
     }
     scene.add(fxGroup);
@@ -6260,38 +6402,77 @@ const Monster3DRenderer = (() => {
           attackAnim.attackerMesh.position.z = attackAnim.attackerMesh.userData.baseZ + dirVec.z * lunge;
         }
 
-        // エフェクト弾・光線がスタイル別の軌道で攻撃側から相手側へ飛翔＆回転
+        // エフェクト弾・光線・斬撃・魔法陣・落雷・隕石がスタイル別の動きで演出！
         if (attackAnim.fxGroup) {
           const st = attackAnim.style;
-          attackAnim.fxGroup.position.lerpVectors(attackAnim.startPos, attackAnim.targetPos, easeP);
-          if (st === 'explosion') {
-            attackAnim.fxGroup.position.y += Math.sin(p * Math.PI) * (attackAnim.isUlt ? 1.15 : 0.8);
-          } else if (st === 'flame' || st === 'acid') {
-            attackAnim.fxGroup.position.y += Math.sin(p * Math.PI) * 0.55;
-            if (st === 'acid') attackAnim.fxGroup.position.x += Math.sin(p * Math.PI * 3) * 0.16;
-          } else if (st === 'plasma' || st === 'radiation') {
-            attackAnim.fxGroup.position.x += Math.sin(p * Math.PI * 4) * 0.22 * Math.sin(p * Math.PI);
-            attackAnim.fxGroup.position.y += Math.cos(p * Math.PI * 4) * 0.16 * Math.sin(p * Math.PI);
+          const baseScale = attackAnim.isUlt ? 1.32 : 1.0;
+          if (st === 'beam' || st === 'hydro') {
+            // 連続照射レーザー / ハイドロポンプ：攻撃側から敵まで伸びたビームが脈動＆回転
+            attackAnim.fxGroup.position.copy(attackAnim.startPos);
+            attackAnim.fxGroup.lookAt(attackAnim.targetPos);
+            const pulse = Math.sin(p * Math.PI);
+            attackAnim.fxGroup.scale.set(baseScale * (0.55 + pulse * 0.75), baseScale * (0.55 + pulse * 0.75), 1);
+            attackAnim.fxGroup.rotateZ(attackAnim.t * (st === 'hydro' ? 18 : 10));
+            if (Math.random() < 0.9) {
+              const mid = new THREE.Vector3().lerpVectors(attackAnim.startPos, attackAnim.targetPos, Math.random());
+              spawnBurst(mid, st === 'hydro' ? 0xe0f2fe : attackAnim.c2, 2);
+            }
+          } else if (st === 'slash') {
+            // クロス斬撃：敵の位置で素早く切り裂くように拡大回転
+            attackAnim.fxGroup.position.copy(attackAnim.targetPos);
+            const sp = Math.sin(p * Math.PI);
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.6 + sp * 0.95));
+            attackAnim.fxGroup.rotation.z = (p - 0.5) * 1.4;
+            if (Math.random() < 0.7) spawnBurst(attackAnim.targetPos.clone(), attackAnim.c1, 2);
           } else if (st === 'electric') {
-            attackAnim.fxGroup.position.x += (Math.random() - 0.5) * 0.14;
-            attackAnim.fxGroup.position.y += (Math.random() - 0.5) * 0.14;
-          }
-
-          if (st === 'beam' || st === 'electric' || st === 'flame') {
+            // 落雷：敵の真上で激しく明滅・振動
+            attackAnim.fxGroup.position.copy(attackAnim.targetPos);
+            attackAnim.fxGroup.position.x += (Math.random() - 0.5) * 0.22;
+            attackAnim.fxGroup.rotation.y += 0.55;
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.85 + Math.random() * 0.45));
+            if (Math.random() < 0.85) spawnBurst(attackAnim.targetPos.clone(), attackAnim.c2, 2);
+          } else if (st === 'cold') {
+            // 氷魔法：魔法陣が回転しながら氷槍が頭上から敵へ突き刺さる
+            attackAnim.fxGroup.position.copy(attackAnim.targetPos);
+            attackAnim.fxGroup.position.y += (1 - easeP) * 1.25;
+            attackAnim.fxGroup.rotation.y += 0.14;
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.85 + Math.sin(p * Math.PI) * 0.35));
+            if (Math.random() < 0.8) spawnBurst(attackAnim.targetPos.clone(), 0xe0f2fe, 2);
+          } else if (st === 'poison' || st === 'acid') {
+            // 毒・強酸：敵の足元から湧き上がりながら渦巻く
+            attackAnim.fxGroup.position.copy(attackAnim.targetPos);
+            attackAnim.fxGroup.position.y -= (1 - p) * 0.35;
+            attackAnim.fxGroup.rotation.y += 0.16;
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.6 + p * 0.7));
+            if (Math.random() < 0.85) spawnBurst(attackAnim.targetPos.clone(), attackAnim.c1, 2);
+          } else if (st === 'explosion') {
+            // 隕石メテオ：左上空から敵へ一直線に急降下
+            const skyStart = new THREE.Vector3(attackAnim.targetPos.x - 1.1, attackAnim.targetPos.y + 3.4, attackAnim.targetPos.z);
+            attackAnim.fxGroup.position.lerpVectors(skyStart, attackAnim.targetPos, p * p);
+            attackAnim.fxGroup.rotation.x += 0.25;
+            attackAnim.fxGroup.rotation.y += 0.30;
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.9 + p * 0.55));
+            spawnBurst(attackAnim.fxGroup.position.clone(), attackAnim.c2, 3);
+          } else if (st === 'flame') {
+            // 連続火炎放射：攻撃側から敵へ放射状に伸びる炎流
+            attackAnim.fxGroup.position.lerpVectors(attackAnim.startPos, attackAnim.targetPos, easeP * 0.45);
             attackAnim.fxGroup.lookAt(attackAnim.targetPos);
             attackAnim.fxGroup.rotateZ(attackAnim.t * 14);
-          } else if (st === 'metallic' || st === 'crystal' || st === 'cold') {
-            attackAnim.fxGroup.rotation.z += 0.45;
-            attackAnim.fxGroup.rotation.y += 0.35;
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.75 + Math.sin(p * Math.PI) * 0.7));
+            spawnBurst(attackAnim.fxGroup.position.clone(), p % 0.2 < 0.1 ? attackAnim.c1 : attackAnim.c2, 3);
           } else {
-            attackAnim.fxGroup.rotation.z += 0.28;
-            attackAnim.fxGroup.rotation.x += 0.22;
-          }
-          const baseScale = attackAnim.isUlt ? 1.38 : 1.0;
-          attackAnim.fxGroup.scale.setScalar(baseScale * (0.85 + Math.sin(p * Math.PI) * 0.65));
-
-          if (Math.random() < (attackAnim.isUlt ? 0.95 : 0.8)) {
-            spawnBurst(attackAnim.fxGroup.position.clone(), p % 0.2 < 0.1 ? attackAnim.c1 : attackAnim.c2, attackAnim.isUlt ? 4 : 2);
+            // crystal / metallic / plasma / radiation：螺旋・回転弾が飛翔
+            attackAnim.fxGroup.position.lerpVectors(attackAnim.startPos, attackAnim.targetPos, easeP);
+            if (st === 'plasma' || st === 'radiation') {
+              attackAnim.fxGroup.position.x += Math.sin(p * Math.PI * 4) * 0.24 * Math.sin(p * Math.PI);
+              attackAnim.fxGroup.position.y += Math.cos(p * Math.PI * 4) * 0.18 * Math.sin(p * Math.PI);
+            }
+            attackAnim.fxGroup.rotation.z += 0.42;
+            attackAnim.fxGroup.rotation.y += 0.32;
+            attackAnim.fxGroup.scale.setScalar(baseScale * (0.85 + Math.sin(p * Math.PI) * 0.65));
+            if (Math.random() < (attackAnim.isUlt ? 0.95 : 0.8)) {
+              spawnBurst(attackAnim.fxGroup.position.clone(), p % 0.2 < 0.1 ? attackAnim.c1 : attackAnim.c2, attackAnim.isUlt ? 4 : 2);
+            }
           }
         }
 
@@ -7200,6 +7381,13 @@ const Game = (() => {
       if (tooltip && qEl) {
         tooltip.textContent = '🎯 さあ やってみよう！ ただしい こたえの「① 水 (H₂O)」を タップして こうげきだ！';
         positionTutorialTooltip(screenEl, qEl, tooltip);
+      }
+    } else if (step === 'b_catch') {
+      const catchEl = document.getElementById('panel-catch-choice');
+      if (catchEl) catchEl.classList.add('tutorial-spotlight-target');
+      if (tooltip && catchEl) {
+        tooltip.textContent = '🎯 てきを たおしたよ！ ここでは「ほしゅうする／しない」が えらべるよ！ 今回は「🧪 捕集する」を タップしてみよう！';
+        positionTutorialTooltip(screenEl, catchEl, tooltip);
       }
     } else if (step === 'keypad') {
       const calcEl = document.getElementById('panel-calc');
@@ -8232,9 +8420,7 @@ const Game = (() => {
     }
     save();
 
-    if (battle.kind === 'tutorial') {
-      throwFlask(true);
-    } else if (battle.kind === 'wild') {
+    if (battle.kind === 'tutorial' || battle.kind === 'wild') {
       promptCatchChoice();
     } else if (battle.kind === 'review') {
       SoundEngine.seCatchFanfare();
@@ -8282,11 +8468,23 @@ const Game = (() => {
     const panel = document.getElementById('panel-catch-choice');
     if (panel) panel.classList.remove('hidden');
 
-    setBattleMsg(`✨ ${eMeta.name} を弱らせた！「🧪 捕集する」か「👋 捕集しない」を選択してください。`, 2600);
+    if (battle.kind === 'tutorial') {
+      setTutorialSpotlight('b_catch');
+    } else {
+      setBattleMsg(`✨ ${eMeta.name} を弱らせた！「🧪 捕集する」か「👋 捕集しない」を選択してください。`, 2600);
+    }
   }
 
   function onConfirmCatch(doCatch) {
     if (!battle || !battle.awaitingCatchChoice) return;
+    if (battle.kind === 'tutorial' && !doCatch) {
+      SoundEngine.seWrong();
+      setBattleMsg('💡 今回は チュートリアルなので「🧪 捕集する」を えらんで つかまえてみよう！', 2600);
+      return;
+    }
+    if (battle.kind === 'tutorial') {
+      setTutorialSpotlight(null);
+    }
     battle.awaitingCatchChoice = false;
     SoundEngine.seClick();
     setExpBanner(null, null);
