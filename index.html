@@ -151,6 +151,13 @@
     z-index: 1;
     pointer-events: none;
   }
+  #three-canvas-wrap.battle-vignette::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0) 56%, rgba(2, 6, 23, 0.28) 100%);
+  }
 
   /* タイトル画面オーバーレイ（明るく爽快なバトルゲーム仕様） */
   #screen-title {
@@ -4582,6 +4589,93 @@ const Monster3DRenderer = (() => {
   let shakePlayer = 0;
   let shakeEnemy = 0;
   let cameraShake = 0;
+  let hemiLight = null;
+  let keyLight = null;
+  let impactLight = null;
+  let glowTexture = null;
+  let envTexture = null;
+  const camBase = { x: 0.0, y: 1.46, z: 5.85 };
+
+  // 【グラフィック強化】柔らかい発光スプライト用の放射グラデーションテクスチャ
+  function makeGlowTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0.0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.22, 'rgba(255,255,255,0.75)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+    g.addColorStop(1.0, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    return tex;
+  }
+
+  // 【グラフィック強化】空・地面・スタジオライトパネルから成る反射用環境マップをPMREMで生成
+  function buildEnvironmentMap() {
+    if (!THREE.PMREMGenerator) return;
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const envScene = new THREE.Scene();
+      const skyGeo = new THREE.SphereGeometry(20, 32, 16);
+      const posAttr = skyGeo.attributes.position;
+      const cols = [];
+      const top = new THREE.Color(0x60a5fa), mid = new THREE.Color(0xf8fafc), bot = new THREE.Color(0x1e293b);
+      for (let i = 0; i < posAttr.count; i++) {
+        const y = posAttr.getY(i) / 20;
+        const c = y > 0 ? mid.clone().lerp(top, Math.min(1, y * 1.3)) : mid.clone().lerp(bot, Math.min(1, -y * 2.2));
+        cols.push(c.r, c.g, c.b);
+      }
+      skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+      envScene.add(new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+      const addPanel = (color, w, h, x, y, z) => {
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+        p.position.set(x, y, z);
+        p.lookAt(0, 0, 0);
+        envScene.add(p);
+      };
+      addPanel(0xffffff, 9, 5, 7, 9, 5);
+      addPanel(0x67e8f9, 6, 6, -9, 3, -3);
+      addPanel(0xfde68a, 8, 3, 0, 4, -11);
+      envTexture = pmrem.fromScene(envScene, 0.035).texture;
+      scene.environment = envTexture;
+      pmrem.dispose();
+    } catch (e) {
+      envTexture = null;
+    }
+  }
+
+  // 【グラフィック強化】モンスターに柔らかいオーラ発光（疑似ブルーム）を付与
+  function addAura(group, colorHex, size = 3.0, opacity = 0.5) {
+    if (!glowTexture || !group) return;
+    const mat = new THREE.SpriteMaterial({
+      map: glowTexture,
+      color: colorHex,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(size, size, 1);
+    sprite.renderOrder = -1;
+    group.add(sprite);
+    group.userData.glow = sprite;
+    group.userData.glowBase = opacity;
+  }
+
+  // 影の投影・受影を一括設定（ワイヤー・発光体は影を落とさない）
+  function enableShadows(obj, cast = true, receive = true) {
+    if (!obj) return;
+    obj.traverse((o) => {
+      if (!o.isMesh) return;
+      const m = o.material;
+      const isBasic = m && (m.isMeshBasicMaterial || m.wireframe || m.blending === THREE.AdditiveBlending);
+      o.castShadow = cast && !isBasic && !(m && m.transparent && m.opacity < 0.6);
+      o.receiveShadow = receive && !isBasic;
+    });
+  }
 
   function init() {
     if (typeof THREE === 'undefined') return;
@@ -4594,23 +4688,53 @@ const Monster3DRenderer = (() => {
     camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 100);
     camera.position.set(0, 1.5, 6);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 【グラフィック強化】ソフトシャドウ & 映画的トーンマッピング
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // ライティング
-    const ambient = new THREE.AmbientLight(0xffffff, 0.78);
+    // 【グラフィック強化】スタジオ品質の3点ライティング＋半球光
+    const ambient = new THREE.AmbientLight(0xffffff, 0.38);
     scene.add(ambient);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.15);
-    dirLight.position.set(5, 8, 6);
-    scene.add(dirLight);
+    hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x334155, 0.55);
+    scene.add(hemiLight);
+
+    keyLight = new THREE.DirectionalLight(0xfff7ed, 1.25);
+    keyLight.position.set(4.5, 8, 5.5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.camera.left = -6;
+    keyLight.shadow.camera.right = 6;
+    keyLight.shadow.camera.top = 6;
+    keyLight.shadow.camera.bottom = -6;
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 30;
+    keyLight.shadow.bias = -0.0006;
+    keyLight.shadow.normalBias = 0.02;
+    scene.add(keyLight);
 
     const rimLight = new THREE.PointLight(0x38bdf8, 1.2, 25);
     rimLight.position.set(-4, 3, -4);
     scene.add(rimLight);
+
+    const fillLight = new THREE.DirectionalLight(0xc4b5fd, 0.35);
+    fillLight.position.set(-5, 2.5, 4);
+    scene.add(fillLight);
+
+    // 着弾時に一瞬光るインパクトライト
+    impactLight = new THREE.PointLight(0xffffff, 0, 7, 2);
+    scene.add(impactLight);
+
+    // 【グラフィック強化】PBR反射用の環境マップ（金属・ガラスがリアルに映り込む）
+    buildEnvironmentMap();
+    glowTexture = makeGlowTexture();
 
     // タイトル用グリッド
     fieldGrid = new THREE.GridHelper(24, 24, 0x06b6d4, 0x1e293b);
@@ -4629,9 +4753,12 @@ const Monster3DRenderer = (() => {
     pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
     const pMat = new THREE.PointsMaterial({
       color: 0x67e8f9,
-      size: 0.08,
+      size: 0.16,
+      map: glowTexture,
       transparent: true,
-      opacity: 0.75
+      opacity: 0.8,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
     particles = new THREE.Points(pGeo, pMat);
     scene.add(particles);
@@ -5046,7 +5173,10 @@ const Monster3DRenderer = (() => {
   function buildMonsterMesh(monOrZ, isIsotope = false, sizeScale = 1.0) {
     if (monOrZ && typeof monOrZ === 'object') {
       if (monOrZ.isCompound && monOrZ.compoundId) {
-        return buildCompoundMesh(monOrZ.compoundId, !!monOrZ.isIsotope, sizeScale);
+        const cg = buildCompoundMesh(monOrZ.compoundId, !!monOrZ.isIsotope, sizeScale);
+        const rr = getRecipe(monOrZ.compoundId);
+        addAura(cg, monOrZ.isIsotope ? 0xf472b6 : ((rr && rr.fxColor) || 0x38bdf8), 3.0, 0.42);
+        return cg;
       }
       return buildMonsterMesh(monOrZ.z || 1, !!monOrZ.isIsotope, sizeScale);
     }
@@ -5076,37 +5206,46 @@ const Monster3DRenderer = (() => {
     } else if (el.type === 'halogen') {
       coreGeo = new THREE.TetrahedronGeometry(0.78, 0);
     } else if (el.type === 'actinoid' || el.type === 'lanthanoid') {
-      coreGeo = new THREE.TorusKnotGeometry(0.42, 0.16, 48, 8, (z % 3) + 2, 3);
+      coreGeo = new THREE.TorusKnotGeometry(0.42, 0.16, 128, 16, (z % 3) + 2, 3);
     } else {
-      coreGeo = shapeSeed % 2 === 0 ? new THREE.SphereGeometry(0.65, 20, 20) : new THREE.DodecahedronGeometry(0.65, 0);
+      coreGeo = shapeSeed % 2 === 0 ? new THREE.SphereGeometry(0.65, 48, 32) : new THREE.DodecahedronGeometry(0.65, 0);
     }
 
     let coreMat;
     if (el.type === 'noble') {
-      // 貴ガス: ガラス状・半透明
+      // 貴ガス: ガラス状・半透明（クリアコート＋環境反射）
       coreMat = new THREE.MeshPhysicalMaterial({
         color: baseColor,
         transparent: true,
         opacity: 0.72,
-        roughness: 0.08,
+        roughness: 0.05,
         metalness: 0.1,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 1.4,
         emissive: baseColor,
         emissiveIntensity: 0.25
       });
     } else if (el.type === 'transition' || el.type === 'post' || el.type === 'alkaline') {
-      // 遷移金属等: メタリック
-      coreMat = new THREE.MeshStandardMaterial({
+      // 遷移金属等: 環境を映し込む鏡面メタリック
+      coreMat = new THREE.MeshPhysicalMaterial({
         color: baseColor,
-        metalness: 0.88,
-        roughness: 0.2,
+        metalness: 0.92,
+        roughness: 0.16,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.12,
+        envMapIntensity: 1.35,
         emissive: isIsotope ? baseColor : 0x000000,
         emissiveIntensity: isIsotope ? 0.35 : 0.08
       });
     } else {
-      coreMat = new THREE.MeshStandardMaterial({
+      coreMat = new THREE.MeshPhysicalMaterial({
         color: baseColor,
-        metalness: 0.3,
-        roughness: 0.35,
+        metalness: 0.25,
+        roughness: 0.3,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.18,
+        envMapIntensity: 1.0,
         emissive: baseColor,
         emissiveIntensity: isIsotope ? 0.45 : 0.18
       });
@@ -5173,23 +5312,48 @@ const Monster3DRenderer = (() => {
 
     group.scale.setScalar(sizeScale);
     group.userData = { coreMesh, shellGroup, satGroup, baseScale: sizeScale };
+    addAura(group, isIsotope ? 0xf472b6 : baseColor.getHex(), 3.1, isIsotope ? 0.6 : 0.45);
     return group;
   }
 
-  // 参考画像の立体ディスク台座（相棒はシアン縁＋白中心、敵はレッド縁＋白中心）
+  // 参考画像の立体ディスク台座（相棒はシアン縁＋白中心、敵はレッド縁＋白中心）＋発光リング＆足元グロー
   function createBattlePad(radius = 1.15, rimColorHex = 0x06b6d4) {
     const padGroup = new THREE.Group();
     const outerRim = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius * 1.02, radius * 1.08, 0.14, 36),
-      new THREE.MeshStandardMaterial({ color: rimColorHex, roughness: 0.35, metalness: 0.1 })
+      new THREE.CylinderGeometry(radius * 1.02, radius * 1.08, 0.14, 64),
+      new THREE.MeshPhysicalMaterial({ color: rimColorHex, roughness: 0.25, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.1 })
     );
     const innerDisc = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius * 0.78, radius * 0.78, 0.16, 36),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.05 })
+      new THREE.CylinderGeometry(radius * 0.78, radius * 0.78, 0.16, 64),
+      new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.08 })
     );
     innerDisc.position.y = 0.01;
+    outerRim.receiveShadow = true;
+    outerRim.castShadow = true;
+    innerDisc.receiveShadow = true;
     padGroup.add(outerRim);
     padGroup.add(innerDisc);
+
+    // 縁の発光ネオンリング
+    const neon = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 1.05, 0.022, 8, 96),
+      new THREE.MeshBasicMaterial({ color: rimColorHex, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    neon.rotation.x = Math.PI / 2;
+    neon.position.y = 0.075;
+    padGroup.add(neon);
+
+    // 足元の地面グロー
+    if (glowTexture) {
+      const groundGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(radius * 3.4, radius * 3.4),
+        new THREE.MeshBasicMaterial({ map: glowTexture, color: rimColorHex, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      groundGlow.rotation.x = -Math.PI / 2;
+      groundGlow.position.y = -0.06;
+      padGroup.add(groundGlow);
+    }
+    padGroup.userData.neon = neon;
     return padGroup;
   }
 
@@ -5204,6 +5368,158 @@ const Monster3DRenderer = (() => {
   };
 
   function buildBattleField(biome) {
+    const bg = buildBattleFieldBase(biome);
+    enableShadows(bg, true, true);
+    const groundY = -1.16;
+    const updaters = [];
+
+    const BIOME_FX = {
+      water:   { fog: 0xbae6fd, hemiSky: 0xe0f2fe, hemiGround: 0x0c4a6e, pColor: 0xe0f2fe, pSize: 0.14, rise: 0.010, drift: 0.004 },
+      volcano: { fog: 0x7c2d12, hemiSky: 0xfed7aa, hemiGround: 0x7f1d1d, pColor: 0xfb923c, pSize: 0.12, rise: 0.022, drift: 0.008 },
+      jungle:  { fog: 0xbbf7d0, hemiSky: 0xdcfce7, hemiGround: 0x14532d, pColor: 0xd9f99d, pSize: 0.15, rise: 0.003, drift: 0.010 },
+      ruins:   { fog: 0xc7d2fe, hemiSky: 0xe0e7ff, hemiGround: 0x57534e, pColor: 0xfde68a, pSize: 0.10, rise: 0.002, drift: 0.004 },
+      swamp:   { fog: 0x4d7c0f, hemiSky: 0xd9f99d, hemiGround: 0x1c1917, pColor: 0xd8b4fe, pSize: 0.13, rise: 0.004, drift: 0.007 }
+    };
+    const fx = BIOME_FX[biome] || BIOME_FX.water;
+    bg.userData.fx = fx;
+
+    // 1. 環境パーティクル（泡・火の粉・ホタル・砂塵・胞子）
+    const pCount = 90;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+      pPos[i * 3] = (Math.random() - 0.5) * 9;
+      pPos[i * 3 + 1] = groundY + Math.random() * 4.2;
+      pPos[i * 3 + 2] = -5 + Math.random() * 6.5;
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({
+      color: fx.pColor, size: fx.pSize, map: glowTexture, transparent: true, opacity: 0.85,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    bg.add(pts);
+    updaters.push((t) => {
+      const arr = pGeo.attributes.position.array;
+      for (let i = 0; i < pCount; i++) {
+        arr[i * 3 + 1] += fx.rise * (0.6 + (i % 5) * 0.12);
+        arr[i * 3] += Math.sin(t * 0.9 + i) * fx.drift;
+        if (arr[i * 3 + 1] > groundY + 4.4) {
+          arr[i * 3 + 1] = groundY + 0.05;
+          arr[i * 3] = (Math.random() - 0.5) * 9;
+        }
+      }
+      pGeo.attributes.position.needsUpdate = true;
+      if (biome === 'jungle' || biome === 'swamp') {
+        pts.material.opacity = 0.55 + Math.sin(t * 3.1) * 0.3;
+      }
+    });
+
+    // 2. バイオーム固有の演出
+    if (biome === 'water') {
+      // 広がる水面の波紋
+      const ripples = [];
+      [[-1.8, -2.4], [2.1, -2.9], [0.3, -3.8], [-2.6, -4.2]].forEach(([x, z], idx) => {
+        const r = new THREE.Mesh(
+          new THREE.RingGeometry(0.2, 0.26, 48),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide })
+        );
+        r.rotation.x = -Math.PI / 2;
+        r.position.set(x, groundY + 0.025, z);
+        r.userData.phase = idx * 0.7;
+        bg.add(r);
+        ripples.push(r);
+      });
+      updaters.push((t) => {
+        ripples.forEach((r) => {
+          const k = ((t * 0.45 + r.userData.phase) % 1);
+          r.scale.setScalar(1 + k * 6);
+          r.material.opacity = 0.6 * (1 - k);
+        });
+      });
+      // 水面の陽光きらめき
+      const glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xfffbeb, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+      glint.scale.set(4.5, 1.6, 1);
+      glint.position.set(1.2, groundY + 0.15, -4.2);
+      bg.add(glint);
+      updaters.push((t) => { glint.material.opacity = 0.5 + Math.sin(t * 2.2) * 0.2; });
+    } else if (biome === 'volcano') {
+      // 溶岩の脈動グロー＋揺らめく溶岩光源
+      const lavaGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(5.2, 5.2),
+        new THREE.MeshBasicMaterial({ map: glowTexture, color: 0xff7a18, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending })
+      );
+      lavaGlow.rotation.x = -Math.PI / 2;
+      lavaGlow.position.set(-0.2, groundY + 0.04, -3.0);
+      bg.add(lavaGlow);
+      const lavaLight = new THREE.PointLight(0xff6a00, 1.6, 9, 2);
+      lavaLight.position.set(-0.2, groundY + 0.8, -2.6);
+      bg.add(lavaLight);
+      updaters.push((t) => {
+        const f = 0.75 + Math.sin(t * 2.4) * 0.15 + Math.sin(t * 7.3) * 0.08;
+        lavaGlow.material.opacity = f;
+        lavaLight.intensity = 1.2 + f * 0.9;
+      });
+    } else if (biome === 'jungle') {
+      // 木漏れ日の光の柱（ゴッドレイ）
+      const rays = [];
+      [[-1.6, -3.4, 0.25], [0.9, -4.0, -0.2], [2.4, -3.0, 0.15]].forEach(([x, z, tilt], idx) => {
+        const ray = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.9, 5.2),
+          new THREE.MeshBasicMaterial({ map: glowTexture, color: 0xfef9c3, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+        );
+        ray.position.set(x, groundY + 2.4, z);
+        ray.rotation.z = tilt;
+        ray.userData.phase = idx * 1.3;
+        bg.add(ray);
+        rays.push(ray);
+      });
+      updaters.push((t) => {
+        rays.forEach((r) => { r.material.opacity = 0.22 + Math.sin(t * 0.8 + r.userData.phase) * 0.1; });
+      });
+    } else if (biome === 'ruins') {
+      // ルーンリングの回転発光
+      const runes = [];
+      bg.traverse((o) => {
+        if (o.isMesh && o.geometry && o.geometry.type === 'TorusGeometry') {
+          o.material.blending = THREE.AdditiveBlending;
+          o.material.depthWrite = false;
+          runes.push(o);
+        }
+      });
+      const portal = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0x60a5fa, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+      portal.scale.set(2.6, 2.6, 1);
+      portal.position.set(0.05, groundY + 1.25, -4.65);
+      bg.add(portal);
+      updaters.push((t) => {
+        runes.forEach((r, i) => { r.rotation.z = t * (0.6 + i * 0.15); r.material.opacity = 0.55 + Math.sin(t * 2 + i) * 0.3; });
+        portal.material.opacity = 0.45 + Math.sin(t * 1.6) * 0.18;
+      });
+    } else {
+      // 沼地：地表を這う霧
+      const mists = [];
+      for (let i = 0; i < 4; i++) {
+        const mist = new THREE.Mesh(
+          new THREE.PlaneGeometry(6, 1.6),
+          new THREE.MeshBasicMaterial({ map: glowTexture, color: 0xd9f99d, transparent: true, opacity: 0.22, depthWrite: false })
+        );
+        mist.position.set(-3 + i * 2.2, groundY + 0.35, -2.4 - i * 0.7);
+        mist.userData.speed = 0.004 + i * 0.0015;
+        bg.add(mist);
+        mists.push(mist);
+      }
+      updaters.push(() => {
+        mists.forEach((m) => {
+          m.position.x += m.userData.speed;
+          if (m.position.x > 5) m.position.x = -5;
+        });
+      });
+    }
+
+    bg.userData.update = (t) => updaters.forEach((fn) => fn(t));
+    return bg;
+  }
+
+  function buildBattleFieldBase(biome) {
     const bg = new THREE.Group();
     const groundY = -1.16;
 
@@ -5348,9 +5664,15 @@ const Monster3DRenderer = (() => {
     mode = 'title';
     clearActors();
     if (container) {
+      container.classList.remove('battle-vignette');
       container.style.background = 'linear-gradient(180deg, #38bdf8 0%, #7dd3fc 42%, #e0f2fe 72%, #fef9c3 88%, #fde047 100%)';
     }
     if (!scene) return;
+    scene.fog = null;
+    if (hemiLight) {
+      hemiLight.color.setHex(0xe0f2fe);
+      hemiLight.groundColor.setHex(0x334155);
+    }
     onResize();
     if (fieldGrid) fieldGrid.visible = true;
     playerBaseMesh = createBattlePad(1.25, 0x0ea5e9);
@@ -5358,6 +5680,7 @@ const Monster3DRenderer = (() => {
     scene.add(playerBaseMesh);
     titleMonster = buildMonsterMesh(buddyMonOrZ, isIso, (scale || 1.0) * 1.15);
     titleMonster.position.set(0, 0.1, 0);
+    enableShadows(titleMonster, true, true);
     scene.add(titleMonster);
   }
 
@@ -5381,7 +5704,8 @@ const Monster3DRenderer = (() => {
       enemyMesh.userData.baseZ = ez;
       enemyBaseMesh.position.set(ex, ey - 0.66, ez);
 
-      camera.position.set(0.0, 1.44, 6.05);
+      camBase.x = 0.0; camBase.y = 1.44; camBase.z = 6.05;
+      camera.position.set(camBase.x, camBase.y, camBase.z);
       camera.lookAt(0.0, -0.02, 0.0);
     } else {
       // 通常時：スマホ縦画面でも相棒の全体（台座含む）が見切れないバランス配置
@@ -5399,7 +5723,8 @@ const Monster3DRenderer = (() => {
       enemyMesh.userData.baseZ = ez;
       enemyBaseMesh.position.set(ex, -0.24, ez);
 
-      camera.position.set(0.0, 1.46, 5.85);
+      camBase.x = 0.0; camBase.y = 1.46; camBase.z = 5.85;
+      camera.position.set(camBase.x, camBase.y, camBase.z);
       camera.lookAt(0.0, -0.04, 0.0);
     }
   }
@@ -5423,6 +5748,15 @@ const Monster3DRenderer = (() => {
     if (fieldGrid) fieldGrid.visible = false;
     battleBgGroup = buildBattleField(currentBattleBiome);
     scene.add(battleBgGroup);
+    const bfx = battleBgGroup.userData.fx;
+    if (bfx) {
+      scene.fog = new THREE.Fog(bfx.fog, 8.5, 21);
+      if (hemiLight) {
+        hemiLight.color.setHex(bfx.hemiSky);
+        hemiLight.groundColor.setHex(bfx.hemiGround);
+      }
+    }
+    if (container) container.classList.add('battle-vignette');
     // バトル画面の上部アリーナ領域（.battle-arena-hud）のサイズに合わせてカメラ比率を更新（下部メッセージウィンドウに絶対に隠れないようにする）
     requestAnimationFrame(() => onResize());
     onResize();
@@ -5432,12 +5766,14 @@ const Monster3DRenderer = (() => {
     const eScale = (eMon.ivScale || 1.0) * 0.72;
 
     playerMesh = buildMonsterMesh(pMon, pMon.isIsotope, pScale);
+    enableShadows(playerMesh, true, true);
     scene.add(playerMesh);
 
     playerBaseMesh = createBattlePad(1.05, 0x00d2ff);
     scene.add(playerBaseMesh);
 
     enemyMesh = buildMonsterMesh(eMon, eMon.isIsotope, eScale);
+    enableShadows(enemyMesh, true, true);
     scene.add(enemyMesh);
 
     enemyBaseMesh = createBattlePad(1.02, 0xf43f5e);
@@ -5449,7 +5785,11 @@ const Monster3DRenderer = (() => {
   function setHiddenMode() {
     mode = 'hidden';
     clearActors();
-    if (container) container.style.background = '';
+    if (scene) scene.fog = null;
+    if (container) {
+      container.classList.remove('battle-vignette');
+      container.style.background = '';
+    }
   }
 
   function triggerShake(target) {
@@ -5668,14 +6008,14 @@ const Monster3DRenderer = (() => {
       onFinishCallback(willCatch);
       return;
     }
-    const trainerPos = new THREE.Vector3(-1.62, -0.05, -0.25);
-    const releasePos = new THREE.Vector3(-1.32, 0.12, -0.05);
+    const trainerPos = new THREE.Vector3(1.18, -0.35, 1.35);
+    const releasePos = new THREE.Vector3(0.95, -0.15, 1.15);
     const targetPos = enemyMesh.position.clone().add(new THREE.Vector3(0, -0.12, 0));
 
-    // トレーナーを相棒モンスターの後方（左奥）に登場させ、振りかぶりポーズにセット
+    // トレーナーを右手前に登場させ、振りかぶりポーズにセット
     if (trainerGroup && trainerArmPivot) {
-      trainerGroup.position.set(trainerPos.x - 0.20, trainerPos.y, trainerPos.z);
-      trainerGroup.rotation.set(0, -0.60, 0);
+      trainerGroup.position.set(trainerPos.x + 0.22, trainerPos.y, trainerPos.z);
+      trainerGroup.rotation.set(0, 0.45, 0);
       trainerArmPivot.rotation.set(1.15, 0, -0.25);
       trainerGroup.visible = true;
     }
@@ -5793,6 +6133,11 @@ const Monster3DRenderer = (() => {
             scene.remove(attackAnim.fxGroup);
           }
           const hitPos = attackAnim.targetPos.clone();
+          if (impactLight) {
+            impactLight.position.copy(hitPos).add(new THREE.Vector3(0, 0.4, 0.5));
+            impactLight.color.setHex(attackAnim.c1);
+            impactLight.intensity = attackAnim.isUlt ? 3.8 : 2.4;
+          }
           const burstCount1 = attackAnim.isUlt ? 38 : 26;
           const burstCount2 = attackAnim.isUlt ? 28 : 18;
           spawnBurst(hitPos, attackAnim.c1, burstCount1);
@@ -5830,20 +6175,20 @@ const Monster3DRenderer = (() => {
           const windDur = 0.56;
           const p = Math.min(1, flaskAnim.t / windDur);
           if (trainerGroup && trainerArmPivot) {
-            trainerGroup.position.x = flaskAnim.trainerPos.x - (1 - p) * 0.28;
+            trainerGroup.position.x = flaskAnim.trainerPos.x + (1 - p) * 0.28;
             if (p < 0.45) {
               // 振りかぶり（テイクバック）
               const wp = p / 0.45;
               trainerArmPivot.rotation.x = 0.8 + wp * 0.65;
-              trainerGroup.rotation.y = -0.55 - wp * 0.25;
+              trainerGroup.rotation.y = 0.45 + wp * 0.25;
             } else {
               // 前方へ力強くスイング（リリース）
               const sp = (p - 0.45) / 0.55;
               trainerArmPivot.rotation.x = 1.45 - sp * 3.35;
-              trainerGroup.rotation.y = -0.80 + sp * 0.48;
+              trainerGroup.rotation.y = 0.70 - sp * 0.48;
             }
             // トレーナーの手元のワールド座標にフラスコを追従させる
-            const handOffset = new THREE.Vector3(0.32, 0.08 + Math.sin(p * Math.PI) * 0.35, -0.25 * p);
+            const handOffset = new THREE.Vector3(-0.22, 0.08 + Math.sin(p * Math.PI) * 0.35, -0.25 * p);
             flaskGroup.position.copy(trainerGroup.position).add(handOffset);
           }
           if (p >= 1) {
@@ -5861,9 +6206,9 @@ const Monster3DRenderer = (() => {
           flaskGroup.position.y += Math.sin(easeP * Math.PI) * 1.65;
           flaskGroup.rotation.z = -easeP * Math.PI * 2;
           flaskGroup.rotation.x = Math.sin(easeP * Math.PI) * 0.45;
-          // 投げ終わったトレーナーは後半でゆっくり後ろへ下がる
+          // 投げ終わったトレーナーは後半でゆっくり右へ下がる
           if (trainerGroup && p > 0.45) {
-            trainerGroup.position.x -= 0.015;
+            trainerGroup.position.x += 0.015;
           }
           if (Math.random() < 0.45) {
             spawnBurst(flaskGroup.position.clone(), 0x67e8f9, 1);
@@ -5962,14 +6307,26 @@ const Monster3DRenderer = (() => {
       }
     }
 
-    // バトル中のカメラシェイク
+    // バトル中のフィールド演出・台座ネオン脈動・インパクトライト減衰・カメラシェイク
     if (mode === 'battle') {
+      if (battleBgGroup && battleBgGroup.userData.update) {
+        battleBgGroup.userData.update(animTime);
+      }
+      if (playerBaseMesh && playerBaseMesh.userData.neon) {
+        playerBaseMesh.userData.neon.material.opacity = 0.68 + Math.sin(animTime * 3.0) * 0.22;
+      }
+      if (enemyBaseMesh && enemyBaseMesh.userData.neon) {
+        enemyBaseMesh.userData.neon.material.opacity = 0.68 + Math.sin(animTime * 3.0 + 1.5) * 0.22;
+      }
+      if (impactLight && impactLight.intensity > 0) {
+        impactLight.intensity = Math.max(0, impactLight.intensity - 0.14);
+      }
       if (cameraShake > 0) {
-        camera.position.x = (Math.random() - 0.5) * cameraShake;
-        camera.position.y = 1.32 + (Math.random() - 0.5) * cameraShake;
+        camera.position.x = camBase.x + (Math.random() - 0.5) * cameraShake;
+        camera.position.y = camBase.y + (Math.random() - 0.5) * cameraShake;
         cameraShake = Math.max(0, cameraShake - 0.024);
         if (cameraShake === 0) {
-          camera.position.set(0.0, 1.32, 5.45);
+          camera.position.set(camBase.x, camBase.y, camBase.z);
         }
       }
     }
@@ -6002,6 +6359,10 @@ const Monster3DRenderer = (() => {
     }
     if (satGroup) {
       satGroup.rotation.y = t * 1.8;
+    }
+    if (m.userData.glow) {
+      const baseOp = m.userData.glowBase || 0.45;
+      m.userData.glow.material.opacity = baseOp * (0.82 + Math.sin(t * 2.6) * 0.18);
     }
     if (typeof m.userData.baseY === 'number') {
       m.position.y = m.userData.baseY + Math.sin(t * 2.4) * 0.08;
