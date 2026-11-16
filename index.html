@@ -1598,10 +1598,13 @@
   }
 
   /* チュートリアル用スポットライトUI */
-  #screen-battle.tutorial-spotlight-active .battle-bottom-deck {
+  #screen-battle.tutorial-spotlight-active .battle-bottom-deck,
+  #screen-home.tutorial-home-spotlight .area-list {
     z-index: auto !important;
+    overflow: visible !important;
   }
-  #tutorial-spotlight-overlay {
+  #tutorial-spotlight-overlay,
+  #home-spotlight-overlay {
     position: absolute;
     inset: 0;
     z-index: 60;
@@ -1715,21 +1718,27 @@
         <span class="stat-pill">🗼 最高: <b id="home-tower-best">0</b>F</span>
       </div>
       <div class="home-nav-grid">
-        <div class="nav-tile" onclick="Game.openSubpage('dex')"><span class="ico">📖</span>元素図鑑</div>
-        <div class="nav-tile" onclick="Game.openSubpage('party')"><span class="ico">🧬</span>相棒・個体</div>
-        <div class="nav-tile" onclick="Game.openSubpage('alchemy')"><span class="ico">⚗️</span>化合物錬成</div>
-        <div class="nav-tile tower-btn" onclick="Game.startTower()"><span class="ico">🗼</span>アボガドロ塔</div>
+        <div id="nav-tile-dex" class="nav-tile" onclick="Game.openSubpage('dex')"><span class="ico">📖</span>元素図鑑</div>
+        <div id="nav-tile-party" class="nav-tile" onclick="Game.openSubpage('party')"><span class="ico">🧬</span>相棒・個体</div>
+        <div id="nav-tile-alchemy" class="nav-tile" onclick="Game.openSubpage('alchemy')"><span class="ico">⚗️</span>化合物錬成</div>
+        <div id="nav-tile-tower" class="nav-tile tower-btn" onclick="Game.startTower()"><span class="ico">🗼</span>アボガドロ塔</div>
       </div>
       <div class="home-nav-grid" style="grid-template-columns: 1.1fr 1fr 1fr; padding-top:0;">
-        <div class="nav-tile" onclick="Game.openSubpage('versus')">📡 通信・交換</div>
+        <div id="nav-tile-versus" class="nav-tile" onclick="Game.openSubpage('versus')">📡 通信・交換</div>
         <div class="nav-tile" id="nav-mistake-tile" onclick="Game.openSubpage('mistakes')">📝 復習(<span id="home-mistake-count">0</span>)</div>
-        <div class="nav-tile" onclick="Game.openSubpage('typechart')">🏆 称号・相性</div>
+        <div id="nav-tile-typechart" class="nav-tile" onclick="Game.openSubpage('typechart')">🏆 称号・相性</div>
       </div>
       <div class="section-bar">
         <span>🗺️ 学習エリア選択（全6章・21単元）</span>
         <span style="font-size:10px;color:#475569;">🔴計算 / 🔵知識 / 🟣混合</span>
       </div>
       <div id="area-list" class="area-list"></div>
+
+      <!-- ホーム画面チュートリアル用スポットライト -->
+      <div id="home-spotlight-overlay" class="hidden" onclick="Game.advanceHomeTutorial()">
+        <button type="button" class="tutorial-skip-btn" style="position:absolute;top:8px;right:8px;" onclick="event.stopPropagation(); Game.skipTutorial();">⏭ チュートリアルをスキップ</button>
+        <div id="home-tutorial-tooltip" class="tutorial-tooltip"></div>
+      </div>
     </div>
 
     <!-- 3. バトル画面 -->
@@ -1849,14 +1858,14 @@
         <!-- 常時表示 4色コマンドボタン（赤:こうげき(解答) / オレンジ:どうぐ・交代 / 青:フラスコ捕集 / 緑:にげる） -->
         <div id="panel-commands" class="cmd-grid">
           <button id="btn-cmd-fight" class="cmd-btn cmd-fight" onclick="Game.onCommandFight()">⚔️ こうげき (解答)</button>
-          <button class="cmd-btn cmd-bag" onclick="Game.onCommandBag()">🎒 どうぐ・交代</button>
+          <button id="btn-cmd-bag" class="cmd-btn cmd-bag" onclick="Game.onCommandBag()">🎒 どうぐ・交代</button>
           <button class="cmd-btn cmd-flask" onclick="Game.onCommandFlask()">🧪 フラスコ捕集</button>
           <button class="cmd-btn cmd-run" onclick="Game.onCommandRun()">💨 にげる</button>
         </div>
       </div>
 
       <!-- チュートリアル用スポットライトオーバーレイ -->
-      <div id="tutorial-spotlight-overlay" class="hidden">
+      <div id="tutorial-spotlight-overlay" class="hidden" onclick="Game.advanceBattleTutorial()">
         <button type="button" class="tutorial-skip-btn" style="position:absolute;top:8px;right:8px;" onclick="event.stopPropagation(); Game.skipTutorial();">⏭ チュートリアルをスキップ</button>
         <div id="tutorial-tooltip" class="tutorial-tooltip">まずは 問題の答えを このテンキーで 入力してみよう！</div>
       </div>
@@ -7023,6 +7032,8 @@ const Game = (() => {
     SoundEngine.seClick();
     DexPreview3D.stop();
     setTutorialSpotlight(null);
+    setHomeSpotlight(null);
+    tutorialPhase = null;
     const tutOv = document.getElementById('tutorial-intro-overlay');
     if (tutOv) tutOv.classList.add('hidden');
     if (battle) {
@@ -7038,22 +7049,122 @@ const Game = (() => {
     'ケミカルモンスターの せかいへ ようこそ！',
     'ここでは 元素や化合物が モンスターとして あばれまわっている！',
     'キミの ちしきと けいさんりょくで モンスターを ほしゅう（捕集）し、',
-    'さいきょうの ケミカルトレーナーを めざすのだ！',
-    'おっと！ さっそく やせいの モンスターが とびだしてきたぞ！'
+    'さいきょうの ケミカルトレーナーを めざすのだ！ まずは ぼうけんに でかけよう！'
+  ];
+  const HOME_TOUR_STEPS = [
+    {
+      id: 'nav-tile-alchemy',
+      text: '③ ⚗️ 化合物れんせい：あつめた元素を くみあわせて「水(H₂O)」や「塩(NaCl)」など 30しゅるいの 化合物がつくれるよ！ バトルのどうぐ や 新しい相棒になるんだ！【タップでつぎへ ▶】'
+    },
+    {
+      id: 'nav-tile-party',
+      text: '④ 🧬 相棒・個体値：バトルにつれていく 3体のチームを きめられるよ！ おなじモンスターを がったい（純度せいせい）すると、つよさランク（C→B→A→S）が アップするよ！【タップでつぎへ ▶】'
+    },
+    {
+      id: 'nav-tile-dex',
+      text: '⑤ 📖 元素図かん：つかまえた元素が とうろくされるよ！「周期表モード」にすると、本物の原子とおなじ 電子のまわりかたを 3Dで ぐるぐる見られるよ！【タップでつぎへ ▶】'
+    },
+    {
+      id: 'nav-tile-versus',
+      text: '⑥ 📡 つうしん・交換：5文字のパスワードを おともだちと おしえあうと、モンスター対戦や 元素のこうかんが できるよ！【タップでつぎへ ▶】'
+    },
+    {
+      id: 'nav-mistake-tile',
+      text: '⑦ 📝 復習（ミスノート）：まちがえた もんだいは じどうで ここにメモされるよ！ にがてな もんだいだけを もういちど バトルで ふくしゅうして 克服しよう！【タップでつぎへ ▶】'
+    },
+    {
+      id: 'nav-tile-typechart',
+      text: '⑧ 📜 セーブデータ引つぎ：タイトル画面や「🏆 称号・相性」にある「ふっかつのじゅもん」で ひらがな10文字を メモしておけば、べつのスマホやパソコンにも データを ひきつげるよ！【タップでつぎへ ▶】'
+    }
   ];
   let tutorialIntroIdx = 0;
   let tutorialOverlayMode = 'intro'; // 'intro' | 'complete'
-  let tutorialSpotlightStep = null; // null | 'keypad' | 'attack'
+  let tutorialPhase = null; // null | 'pick_area1' | 'battle' | 'home_tour'
+  let tutorialSpotlightStep = null; // null | 'b_attack' | 'b_ult' | 'b_bag' | 'b_go' | 'keypad' | 'attack'
+  let homeTourIdx = -1;
+
+  function positionTutorialTooltip(screenEl, targetEl, tooltipEl) {
+    if (!screenEl || !targetEl || !tooltipEl) return;
+    requestAnimationFrame(() => {
+      const sr = screenEl.getBoundingClientRect();
+      const tr = targetEl.getBoundingClientRect();
+      const scale = sr.height / (screenEl.offsetHeight || sr.height || 1);
+      const spaceAbove = (tr.top - sr.top) / scale;
+      if (spaceAbove > 140) {
+        tooltipEl.style.top = 'auto';
+        tooltipEl.style.bottom = Math.max(24, Math.round((sr.bottom - tr.top) / scale) + 12) + 'px';
+      } else {
+        tooltipEl.style.bottom = 'auto';
+        tooltipEl.style.top = Math.round((tr.bottom - sr.top) / scale) + 14 + 'px';
+      }
+    });
+  }
+
+  function setHomeSpotlight(targetId, text) {
+    const screenEl = document.getElementById('screen-home');
+    const overlay = document.getElementById('home-spotlight-overlay');
+    const tooltip = document.getElementById('home-tutorial-tooltip');
+    if (screenEl) {
+      screenEl.querySelectorAll('.tutorial-spotlight-target').forEach(el => el.classList.remove('tutorial-spotlight-target'));
+    }
+    if (!targetId || !overlay || !screenEl) {
+      if (screenEl) screenEl.classList.remove('tutorial-home-spotlight');
+      if (overlay) overlay.classList.add('hidden');
+      return;
+    }
+    const targetEl = document.getElementById(targetId);
+    if (!targetEl) return;
+    screenEl.classList.add('tutorial-home-spotlight');
+    overlay.classList.remove('hidden');
+    targetEl.classList.add('tutorial-spotlight-target');
+    if (tooltip) {
+      tooltip.textContent = text;
+      positionTutorialTooltip(screenEl, targetEl, tooltip);
+    }
+  }
+
+  function advanceHomeTutorial() {
+    if (tutorialPhase !== 'home_tour') return;
+    SoundEngine.seClick();
+    homeTourIdx++;
+    if (homeTourIdx < HOME_TOUR_STEPS.length) {
+      const step = HOME_TOUR_STEPS[homeTourIdx];
+      setHomeSpotlight(step.id, step.text);
+    } else {
+      setHomeSpotlight(null);
+      tutorialPhase = null;
+      showTutorialComplete();
+    }
+  }
+
+  function startHomeAreaGuide() {
+    tutorialPhase = 'pick_area1';
+    openChapters[1] = true;
+    Monster3DRenderer.setHiddenMode();
+    updateHomeBar();
+    renderAreaList();
+    showScreen('home');
+    const areaList = document.getElementById('area-list');
+    if (areaList) areaList.scrollTop = 0;
+    setHomeSpotlight('area-card-1', '① まずは 学習エリアを えらぼう！ 第1章の「単元1 純物質と混合物」を タップしてね！');
+  }
+
+  function startHomeFeatureTour() {
+    tutorialPhase = 'home_tour';
+    homeTourIdx = 0;
+    endBattleToHome();
+    const step = HOME_TOUR_STEPS[0];
+    setHomeSpotlight(step.id, step.text);
+  }
 
   function setTutorialSpotlight(step) {
     tutorialSpotlightStep = step;
     const screenEl = document.getElementById('screen-battle');
     const overlay = document.getElementById('tutorial-spotlight-overlay');
     const tooltip = document.getElementById('tutorial-tooltip');
-    const calcEl = document.getElementById('panel-calc');
-    const fightBtn = document.getElementById('btn-cmd-fight');
-    if (calcEl) calcEl.classList.remove('tutorial-spotlight-target');
-    if (fightBtn) fightBtn.classList.remove('tutorial-spotlight-target');
+    if (screenEl) {
+      screenEl.querySelectorAll('.tutorial-spotlight-target').forEach(el => el.classList.remove('tutorial-spotlight-target'));
+    }
     if (!step || !overlay || !screenEl) {
       if (screenEl) screenEl.classList.remove('tutorial-spotlight-active');
       if (overlay) overlay.classList.add('hidden');
@@ -7061,30 +7172,63 @@ const Game = (() => {
     }
     screenEl.classList.add('tutorial-spotlight-active');
     overlay.classList.remove('hidden');
-    if (step === 'keypad' && calcEl) {
-      calcEl.classList.add('tutorial-spotlight-target');
-      if (tooltip) {
+
+    if (step === 'b_attack') {
+      const qEl = document.getElementById('panel-quiz');
+      if (qEl) qEl.classList.add('tutorial-spotlight-target');
+      if (tooltip && qEl) {
+        tooltip.textContent = '②-1 こうげきの しかた：もんだいの こたえを えらぶと 相棒が こうげきするよ！（計算もんだいのときは 電卓で数字をいれて「⚔️ こうげき」をおそう！）【タップでつぎへ ▶】';
+        positionTutorialTooltip(screenEl, qEl, tooltip);
+      }
+    } else if (step === 'b_ult') {
+      const mvEl = document.getElementById('move-selector-bar');
+      if (mvEl) mvEl.classList.add('tutorial-spotlight-target');
+      if (tooltip && mvEl) {
+        tooltip.textContent = '②-2 ひっさつわざ：上の3つのボタンで わざを えらべるよ！ 3もん れんぞくで せいかいして MPが 100になると、3番目の「超ひっさつ奥義」が つかえるよ！【タップでつぎへ ▶】';
+        positionTutorialTooltip(screenEl, mvEl, tooltip);
+      }
+    } else if (step === 'b_bag') {
+      const bagEl = document.getElementById('btn-cmd-bag');
+      if (bagEl) bagEl.classList.add('tutorial-spotlight-target');
+      if (tooltip && bagEl) {
+        tooltip.textContent = '②-3 どうぐ と こうたい：「🎒 どうぐ・交代」をおすと、つくった化合物アイテムで かいふくしたり、ほかの相棒と こうたいしたり できるよ！【タップでつぎへ ▶】';
+        positionTutorialTooltip(screenEl, bagEl, tooltip);
+      }
+    } else if (step === 'b_go') {
+      const qEl = document.getElementById('panel-quiz');
+      if (qEl) qEl.classList.add('tutorial-spotlight-target');
+      if (tooltip && qEl) {
+        tooltip.textContent = '🎯 さあ やってみよう！ ただしい こたえの「① 水 (H₂O)」を タップして こうげきだ！';
+        positionTutorialTooltip(screenEl, qEl, tooltip);
+      }
+    } else if (step === 'keypad') {
+      const calcEl = document.getElementById('panel-calc');
+      if (calcEl) calcEl.classList.add('tutorial-spotlight-target');
+      if (tooltip && calcEl) {
         tooltip.textContent = 'まずは 問題の答えを このテンキーで 入力してみよう！';
-        requestAnimationFrame(() => {
-          const sr = screenEl.getBoundingClientRect();
-          const tr = calcEl.getBoundingClientRect();
-          const scale = sr.height / (screenEl.offsetHeight || sr.height || 1);
-          const bottomPx = Math.max(120, Math.round((sr.bottom - tr.top) / scale) + 12);
-          tooltip.style.bottom = bottomPx + 'px';
-        });
+        positionTutorialTooltip(screenEl, calcEl, tooltip);
       }
-    } else if (step === 'attack' && fightBtn) {
-      fightBtn.classList.add('tutorial-spotlight-target');
-      if (tooltip) {
+    } else if (step === 'attack') {
+      const fightBtn = document.getElementById('btn-cmd-fight');
+      if (fightBtn) fightBtn.classList.add('tutorial-spotlight-target');
+      if (tooltip && fightBtn) {
         tooltip.textContent = '『こうげき』ボタンを タップだ！';
-        requestAnimationFrame(() => {
-          const sr = screenEl.getBoundingClientRect();
-          const tr = fightBtn.getBoundingClientRect();
-          const scale = sr.height / (screenEl.offsetHeight || sr.height || 1);
-          const bottomPx = Math.max(60, Math.round((sr.bottom - tr.top) / scale) + 12);
-          tooltip.style.bottom = bottomPx + 'px';
-        });
+        positionTutorialTooltip(screenEl, fightBtn, tooltip);
       }
+    }
+  }
+
+  function advanceBattleTutorial() {
+    if (!battle || battle.kind !== 'tutorial') return;
+    if (tutorialSpotlightStep === 'b_attack') {
+      SoundEngine.seClick();
+      setTutorialSpotlight('b_ult');
+    } else if (tutorialSpotlightStep === 'b_ult') {
+      SoundEngine.seClick();
+      setTutorialSpotlight('b_bag');
+    } else if (tutorialSpotlightStep === 'b_bag') {
+      SoundEngine.seClick();
+      setTutorialSpotlight('b_go');
     }
   }
 
@@ -7112,13 +7256,15 @@ const Game = (() => {
     const txt = document.getElementById('tutorial-msg-text');
     const skipBtn = document.getElementById('btn-tutorial-skip');
     if (skipBtn) skipBtn.classList.add('hidden');
-    if (txt) txt.textContent = '見事だ！ その調子で 図鑑のコンプリートを めざしてくれ！';
+    if (txt) txt.textContent = 'これで チュートリアルは おわり！ 見事だ！ その調子で 図鑑のコンプリートを めざしてくれ！';
     if (ov) ov.classList.remove('hidden');
   }
 
   function skipTutorial() {
     SoundEngine.seClick();
     setTutorialSpotlight(null);
+    setHomeSpotlight(null);
+    tutorialPhase = null;
     const ov = document.getElementById('tutorial-intro-overlay');
     if (ov) ov.classList.add('hidden');
     localStorage.setItem('tutorialCompleted', '1');
@@ -7138,7 +7284,9 @@ const Game = (() => {
     if (tutorialOverlayMode === 'complete') {
       if (ov) ov.classList.add('hidden');
       localStorage.setItem('tutorialCompleted', '1');
-      endBattleToHome();
+      if (battle && battle.kind === 'tutorial') {
+        endBattleToHome();
+      }
       return;
     }
     tutorialIntroIdx++;
@@ -7146,11 +7294,12 @@ const Game = (() => {
       if (txt) txt.textContent = TUTORIAL_INTRO_LINES[tutorialIntroIdx];
     } else {
       if (ov) ov.classList.add('hidden');
-      startTutorialBattle();
+      startHomeAreaGuide();
     }
   }
 
   function startTutorialBattle() {
+    tutorialPhase = 'battle';
     const eMon = {
       z: 1,
       lv: 1,
@@ -7162,7 +7311,7 @@ const Game = (() => {
     };
     launchBattle({
       kind: 'tutorial',
-      areaId: 4,
+      areaId: 1,
       enemy: eMon,
       eHp: 20,
       eMaxHp: 20,
@@ -7247,6 +7396,7 @@ const Game = (() => {
           const modeLabel = a.mode === 'calc' ? '計算' : (a.mode === 'mix' ? '混合' : '4択');
           const div = document.createElement('div');
           div.className = 'area-card';
+          div.id = 'area-card-' + a.id;
           div.onclick = () => startWildBattle(a.id);
           div.innerHTML = `
             <div>
@@ -7275,6 +7425,11 @@ const Game = (() => {
 
   function startWildBattle(areaId, chapterAreaIds = null, chapterLabel = null) {
     SoundEngine.seClick();
+    if (tutorialPhase === 'pick_area1' && areaId === 1) {
+      setHomeSpotlight(null);
+      startTutorialBattle();
+      return;
+    }
     const area = AREAS.find(a => a.id === areaId) || AREAS[0];
     const buddy = getBuddy();
     const enemyLv = Math.max(2, buddy.lv + Math.floor(Math.random() * 3) - 1);
@@ -7729,14 +7884,14 @@ const Game = (() => {
     let areaId = battle.areaId;
     let q = null;
     if (battle.kind === 'tutorial') {
-      areaId = 4;
-      battle.areaId = 4;
+      areaId = 1;
+      battle.areaId = 1;
       q = {
-        type: 'calc',
-        q: '【チュートリアル】原子番号 1 の 水素 (H) がもつ「陽子」の数はいくつ？',
-        ans: 1,
-        unit: '個',
-        exp: '原子番号は原子核中の陽子の数に等しいため、水素 (H, 原子番号1) の陽子の数は 1 個です！'
+        type: 'quiz',
+        q: '【チュートリアル】次のうち、1種類の物質だけでできている「純物質」はどれかな？',
+        opts: ['水 (H₂O)', '空気', '海水', '食塩水'],
+        ansIdx: 0,
+        exp: '水 (H₂O) は 1しゅるいの 物質だけで できている「純物質」だよ！ 空気や海水は いろいろまざった「混合物」だよ。'
       };
     } else if (battle.kind === 'review' && Array.isArray(state.mistakes) && state.mistakes.length > 0) {
       const idx = (battle.reviewCursor || 0) % state.mistakes.length;
@@ -7795,11 +7950,17 @@ const Game = (() => {
         btn.textContent = `${['①','②','③','④'][idx]} ${opt}`;
         btn.onclick = () => {
           SoundEngine.seClick();
+          if (battle && battle.kind === 'tutorial') {
+            setTutorialSpotlight(null);
+          }
           resolveAnswer(idx === q.ansIdx);
         };
         qPanel.appendChild(btn);
       });
       qPanel.classList.remove('hidden');
+      if (battle.kind === 'tutorial') {
+        setTutorialSpotlight('b_attack');
+      }
     } else {
       document.getElementById('panel-calc').classList.remove('hidden');
       CalcUI.reset(q.unit, (valStr) => {
@@ -7961,9 +8122,8 @@ const Game = (() => {
       SoundEngine.seWrong();
       if (battle.kind === 'tutorial') {
         battle.locked = false;
-        setBattleMsg('おしい！ 水素(原子番号1)の陽子の数は「1」だよ！ もういちど入力してみよう！');
-        CalcUI.reset(answeredQ.unit || '');
-        setTutorialSpotlight('keypad');
+        setBattleMsg('おしい！ 「① 水 (H₂O)」を えらんで こうげきしてみよう！');
+        setTutorialSpotlight('b_go');
         return;
       }
       recordMistake(answeredQ, battle.areaId);
@@ -8360,7 +8520,7 @@ const Game = (() => {
         if (success) {
           registerCaughtMonster(battle.enemy);
           if (battle.kind === 'tutorial') {
-            setTimeout(() => showTutorialComplete(), 1100);
+            setTimeout(() => startHomeFeatureTour(), 1100);
           } else {
             setTimeout(() => endBattleToHome(), 1400);
           }
@@ -9518,7 +9678,7 @@ const Game = (() => {
     init, startFromTitle, returnToTitle, startWildBattle, startTower,
     onCommandFight, onCommandFlask, onCommandBag, onCommandSwitch, onCommandRun,
     onConfirmCatch, openSubpage, closeSubpage,
-    advanceTutorialIntro, skipTutorial, onTutorialCalcInput
+    advanceTutorialIntro, advanceHomeTutorial, advanceBattleTutorial, skipTutorial, onTutorialCalcInput
   };
 })();
 
