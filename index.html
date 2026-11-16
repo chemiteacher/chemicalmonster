@@ -840,55 +840,42 @@
   }
 
   .question-box {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 900;
     color: #0f172a;
     background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
     border: 2.5px solid #38bdf8;
     border-radius: 8px;
-    padding: 7px 10px;
+    padding: 6px 10px;
     box-shadow: 0 2px 10px rgba(56, 189, 248, 0.28);
-    line-height: 1.45;
-    min-height: 56px;
-    max-height: 90px;
-    overflow-y: auto;
+    line-height: 1.42;
+    min-height: 48px;
+    max-height: none;
+    overflow-y: visible;
     white-space: pre-line;
   }
   .question-label {
     display: inline-block;
     background: #0284c7;
     color: #ffffff;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 900;
-    padding: 1px 8px;
+    padding: 1px 7px;
     border-radius: 4px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     letter-spacing: 0.08em;
   }
 
   .msg-log-line {
-    font-size: 12px;
-    font-weight: 800;
-    color: #facc15;
-    line-height: 1.4;
-    border-top: 1px solid rgba(51, 65, 85, 0.65);
-    padding-top: 4px;
-    min-height: 44px;
-    max-height: 58px;
-    overflow-y: auto;
-    white-space: pre-line;
+    display: none !important;
   }
   #screen-battle.calc-mode .question-box {
-    min-height: 40px;
-    max-height: 62px;
+    min-height: 42px;
+    max-height: none;
+    overflow-y: visible;
     padding: 5px 8px;
-    font-size: 12.5px;
-  }
-  #screen-battle.calc-mode .msg-log-line {
-    min-height: 30px;
-    max-height: 40px;
-    font-size: 11px;
-    padding-top: 2px;
+    font-size: 12px;
+    line-height: 1.38;
   }
 
   /* 戦闘画面の上に大きく見やすく表示する学習解説オーバーレイ（どこをタップしても即消去・5秒後に自動消去） */
@@ -1231,10 +1218,11 @@
     padding-bottom: 2px;
   }
   #screen-battle.calc-mode .question-box {
-    font-size: 11.5px;
-    line-height: 1.32;
-    min-height: 26px;
-    max-height: 44px;
+    font-size: 12px;
+    line-height: 1.38;
+    min-height: 38px;
+    max-height: none;
+    overflow-y: visible;
   }
   #screen-battle.calc-mode .move-pill-btn {
     padding: 2.5px 3px;
