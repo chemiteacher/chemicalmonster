@@ -3237,7 +3237,7 @@ function getMonsterMeta(monOrZ) {
   return getMonsterMeta(z);
 }
 
-// 疑似通信対戦用の5文字短縮パスワード生成・復元関数
+// 疑似通信対戦用の5文字短縮パスワード生成・復元関数（ランダムソルト＋全単射置換で毎回異なる5文字を生成）
 function encodeVersusCode(mon) {
   let speciesId = mon.z || 1;
   if (mon.isCompound && mon.compoundId) {
@@ -3250,8 +3250,11 @@ function encodeVersusCode(mon) {
   const ivIdx = ivMap[mon.ivRank] !== undefined ? ivMap[mon.ivRank] : 1;
 
   const rawVal = (((speciesId * 100 + lv) * 2 + iso) * 4) + ivIdx;
-  const chk = (rawVal * 7 + 13) % 36;
-  const codeNum = rawVal * 36 + chk + 1679616; // 36^4 を足して必ず5文字にする
+  const salt = Math.floor(Math.random() * 12);
+  const base = salt * 120000 + rawVal;
+  const perm = Number((BigInt(base) * 1000003n + 314159n) % 1440000n);
+  const chk = (perm * 7 + 13) % 36;
+  const codeNum = perm * 36 + chk + 1679616; // 36^4 を足して必ず5文字にする
   return codeNum.toString(36).toUpperCase();
 }
 
@@ -3261,8 +3264,12 @@ function decodeVersusCode(codeStr) {
     const codeNum = parseInt(clean.toLowerCase(), 36) - 1679616;
     if (codeNum < 0) throw new Error('invalid');
     const chk = codeNum % 36;
-    const rawVal = Math.floor(codeNum / 36);
-    if ((rawVal * 7 + 13) % 36 !== chk) throw new Error('checksum');
+    const perm = Math.floor(codeNum / 36);
+    if (perm >= 1440000 || (perm * 7 + 13) % 36 !== chk) throw new Error('checksum');
+
+    const diff = (perm - 314159 + 1440000) % 1440000;
+    const base = Number((BigInt(diff) * 546667n) % 1440000n);
+    const rawVal = base % 120000;
 
     const ivIdx = rawVal % 4;
     const rem1 = Math.floor(rawVal / 4);
