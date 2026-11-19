@@ -832,11 +832,84 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 6px;
     font-size: 11px;
     font-weight: 900;
     color: #38bdf8;
     border-bottom: 1px solid #1e293b;
     padding-bottom: 4px;
+  }
+  .mini-learn-btn {
+    border: 1px solid #38bdf8;
+    background: rgba(14, 165, 233, 0.16);
+    color: #e0f2fe;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .mini-learn-btn:active { transform: scale(0.95); }
+  .mini-learn-btn.hint {
+    border-color: #facc15;
+    background: rgba(250, 204, 21, 0.16);
+    color: #fef08a;
+  }
+  .area-mastery-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .area-mastery-bar {
+    flex: 1;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 99px;
+    overflow: hidden;
+    max-width: 120px;
+  }
+  .area-mastery-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.25s ease;
+  }
+  .area-rank-badge {
+    font-size: 9.5px;
+    font-weight: 900;
+    padding: 1px 6px;
+    border-radius: 99px;
+    border: 1px solid transparent;
+  }
+  .area-rank-badge.rank-s { background: #fef08a; color: #854d0e; border-color: #eab308; }
+  .area-rank-badge.rank-a { background: #dcfce7; color: #166534; border-color: #22c55e; }
+  .area-rank-badge.rank-b { background: #dbeafe; color: #1e40af; border-color: #3b82f6; }
+  .area-rank-badge.rank-c { background: #fee2e2; color: #991b1b; border-color: #ef4444; }
+  .area-rank-badge.rank-none { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+  .area-note-btn {
+    background: #f0f9ff;
+    color: #0369a1;
+    border: 1.5px solid #38bdf8;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 4px 7px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .learn-note-box {
+    width: min(92vw, 420px);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 3px solid #0284c7;
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.45);
+    color: #0f172a;
+    text-align: left;
+    max-height: 82vh;
+    overflow-y: auto;
   }
 
   .question-box {
@@ -1821,7 +1894,11 @@
         <div class="msg-window-card">
           <div class="msg-header-bar">
             <span id="battle-area-title">【単元1】純物質と混合物</span>
-            <span id="battle-unit-label">単位: -</span>
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              <button type="button" id="btn-battle-note" class="mini-learn-btn" onclick="Game.openAreaNote()">📖 要点</button>
+              <button type="button" id="btn-battle-hint" class="mini-learn-btn hint" onclick="Game.showQuestionHint()">💡 ヒント</button>
+              <span id="battle-unit-label">単位: -</span>
+            </div>
           </div>
           <div id="battle-question" class="question-box">問題を読み込み中…</div>
           <div id="battle-msg" class="msg-log-line">⚡ あっ！ やせいの ケミカルモンスター が とびだしてきた！</div>
@@ -1899,6 +1976,11 @@
       <div id="battle-exp-backdrop" class="exp-backdrop hidden">
         <div id="battle-exp-box" class="exp-banner-box"></div>
       </div>
+    </div>
+
+    <!-- 10秒要点まとめ＆公式ヒントオーバーレイ（画面のどこをタップしても閉じる） -->
+    <div id="learn-note-backdrop" class="exp-backdrop hidden" onclick="Game.closeAreaNote()">
+      <div id="learn-note-box" class="learn-note-box"></div>
     </div>
 
     <!-- チュートリアル導入・完了メッセージオーバーレイ（オーキド博士風） -->
@@ -4975,6 +5057,9 @@ const QuestionEngine = (() => {
     return null;
   }
 
+  let recentQuizByArea = {};
+  let lastQuizAnsIdx = -1;
+
   function generate(areaId) {
     const area = AREAS.find(a => a.id === areaId) || AREAS[0];
     if (area.mode === 'calc' || (area.mode === 'mix' && Math.random() < 0.55)) {
@@ -4991,20 +5076,38 @@ const QuestionEngine = (() => {
         return cq;
       }
     }
+    if (!recentQuizByArea[areaId]) recentQuizByArea[areaId] = [];
+    const qHist = recentQuizByArea[areaId];
     let item = null;
     if (Math.random() < 0.4) {
       item = genDynamicBasicQuiz(areaId);
+      for (let retry = 0; retry < 6 && item && qHist.includes(item.q); retry++) {
+        item = genDynamicBasicQuiz(areaId);
+      }
     }
     if (!item) {
       item = pickQuizItem(areaId);
+      for (let retry = 0; retry < 8 && item && qHist.includes(item.q); retry++) {
+        item = pickQuizItem(areaId);
+      }
+    }
+    if (item && item.q) {
+      qHist.push(item.q);
+      if (qHist.length > 10) qHist.shift();
     }
     const correctText = item.opts[item.ans];
-    const shuffled = shuffle(item.opts);
+    let shuffled = shuffle(item.opts);
+    // 直前の正解番号と連続して同じ位置に偏らないよう再シャッフル（まぐれ当たり防止）
+    if (shuffled.indexOf(correctText) === lastQuizAnsIdx && Math.random() < 0.75) {
+      shuffled = shuffle(item.opts);
+    }
+    const ansIdx = shuffled.indexOf(correctText);
+    lastQuizAnsIdx = ansIdx;
     return {
       type: 'quiz',
       q: item.q,
       opts: shuffled,
-      ansIdx: shuffled.indexOf(correctText),
+      ansIdx,
       exp: item.exp
     };
   }
@@ -7330,6 +7433,7 @@ const Game = (() => {
     lastIssuedTradeCode: '',
     mistakes: [],
     towerBest: 0,
+    areaStats: {},
     stats: { wins: 0, catches: 0, answered: 0, correct: 0 }
   };
 
@@ -8005,6 +8109,43 @@ const Game = (() => {
     if (mc) mc.textContent = Array.isArray(state.mistakes) ? state.mistakes.length : 0;
   }
 
+  // 高校「化学基礎」全21単元の「10秒要点まとめ & 重要公式」
+  const AREA_NOTES = {
+    1:  { formula: '分離：混合物を各成分に分ける操作 ／ 精製：不純物を除き純度を高める操作', points: ['ろ過（不溶固体＋液体）、蒸留（沸点差で液体分離）、分留（複数の液体の沸点差）', '再結晶（溶解度の温度変化の差）、昇華法（I₂・ドライアイス・ナフタレン）', '抽出（溶媒への溶けやすさの差）、クロマトグラフィー（移動速度の差）'] },
+    2:  { formula: '単体（1種類の元素からなる純物質） vs 化合物（2種類以上の元素からなる純物質）', points: ['同素体：同じ元素からでき性質が異なる単体（S・C・O・P の4元素＝SCOP）', '炎色反応：Li赤, Na黄, K赤紫, Cu青緑, Ca橙赤, Sr紅, Ba黄緑', '沈殿・気体確認：Cl⁻＋Ag⁺→AgCl(白)、CO₂＋石灰水→CaCO₃(白)、O₂は線香が激しく燃える'] },
+    3:  { formula: '絶対温度 T〔K〕 ＝ セルシウス温度 t〔℃〕 ＋ 273 （絶対零度 0 K ＝ −273℃）', points: ['熱運動が激しくなるほど状態が「固体 → 液体 → 気体」と変化する', '状態変化は分子そのものは変わらない「物理変化」（純物質の融点・凝固点は同じ温度）', '融解・蒸発している間は、加えた熱が状態変化（融解熱・蒸発熱）に使われるため温度が一定'] },
+    4:  { formula: '質量数 ＝ 陽子の数（＝原子番号） ＋ 中性子の数 ／ 同位体：原子番号同じで中性子数が異なる', points: ['電気素量 e ≒ 1.602×10⁻¹⁹ C（陽子は＋e、電子は−e、中性子は電荷 0）', 'トムソン(1897年)：陰極線から電子発見 ／ ラザフォード(1911年)：α線散乱で原子核発見', '放射性同位体：α線(⁴₂He)、β線(電子)、γ線(電磁波)。¹⁴C(半減期5730年)は年代測定に利用'] },
+    5:  { formula: '電子殻の最大収容数：2n² 個（K殻:2、L殻:8、M殻:18、N殻:32）', points: ['最外殻電子のうち化学結合に関わる電子を「価電子」という（18族の貴ガスは 0 個）', '電子を失うと陽イオン（＋）、受け取ると陰イオン（−「〜化物イオン」）になる', '第一イオン化エネルギー：18族が最大、1族(アルカリ金属)が最小になりやすい'] },
+    6:  { formula: '現在の周期表：原子番号（陽子の数）の順に配列（メンデレーエフは原子量順）', points: ['同じ「族」（縦列）は価電子数が等しく化学的性質が似ている', '典型元素（1〜2, 12〜18族）と遷移元素（3〜11族：第4周期から登場・すべて金属）', '1族(H除く)は石油中に保存／17族 Br₂ は常温で赤褐色の液体／右上(F)ほど電気陰性度大'] },
+    7:  { formula: 'イオン結合：陽イオンと陰イオンの静電気的な引力（クーロン力）による結合', points: ['組成式：陽イオンを先、陰イオンを後に書く（多原子イオンが2個以上なら () で囲む）', 'イオン結晶は高融点・硬いが、力が加わると同符号イオンどうしが反発し割れやすい（もろい）', '固体では電気を通さないが、水溶液（電離）や融解状態（液体）ではイオンが動き電気を通す'] },
+    8:  { formula: '共有結合：非金属原子どうしが不対電子を出し合い、共有電子対をつくって結ぶ結合', points: ['原子価（結合の手の数）：H＝1、O＝2、N＝3、C＝4（単結合・二重結合・三重結合）', '配位結合：一方の原子の非共有電子対を他方(H⁺など)に提供してできる結合（形成後は等価）', '電子式では対になっていない電子を「不対電子」、共有されない対を「非共有電子対」という'] },
+    9:  { formula: '分子の形：直線形(CO₂) / 折れ線形(H₂O) / 三角錐形(NH₃) / 正四面体形(CH₄)', points: ['電気陰性度の差で生じる電荷の偏りを「結合の極性」という（F が最大 4.0）', 'CO₂ や CH₄ は結合に極性があっても対称な形のため極性が打ち消され「無極性分子」', 'F・O・N に結合した H を介する「水素結合」により H₂O・NH₃・HF は沸点が高く氷は水に浮く'] },
+    10: { formula: '4種類の結晶：イオン結晶 / 分子結晶 / 共有結合の結晶 / 金属結晶', points: ['金属結晶：自由電子により電気・熱伝導性、金属光沢、展性（広がる）・延性（伸びる）をもつ', '共有結合の結晶（ダイヤモンド・Si・SiO₂）：きわめて硬く高融点（黒鉛のみ電気を通す）', '分子結晶（ドライアイス・I₂・ナフタレン）：弱い分子間力で結びつき低融点・昇華しやすい'] },
+    11: { formula: '相対質量（¹²C＝12基準）／ 原子量 ＝ Σ(同位体の相対質量 × 存在比)', points: ['分子量（分子の化学式の原子量の和）と式量（組成式・イオン式の原子量の和）に単位はない', '成分元素の質量百分率(%) ＝ (着目元素の原子量の和 ÷ 分子量・式量) × 100', '結晶水 nH₂O の式量は、無水物の式量 ＋ 18×n で求める'] },
+    12: { formula: 'n〔mol〕＝ 粒子数 ÷ (6.0×10²³) ＝ 質量〔g〕 ÷ モル質量〔g/mol〕 ＝ 体積〔L〕 ÷ 22.4', points: ['アボガドロ定数 NA ≒ 6.0×10²³ /mol、標準状態（0℃, 1.013×10⁵ Pa）の気体1 mol＝22.4 L', 'モル質量〔g/mol〕の数値は、原子量・分子量・式量に等しい', 'アボガドロの法則：同温・同圧のもとで、同体積の気体は種類によらず同数の分子を含む'] },
+    13: { formula: '質量パーセント濃度(%) ＝ (溶質〔g〕÷ 溶液〔g〕)×100 ／ モル濃度 c〔mol/L〕＝ n〔mol〕÷ V〔L〕', points: ['溶液の質量 ＝ 溶質の質量 ＋ 溶媒の質量（溶液の体積〔mL〕× 密度〔g/cm³〕＝ 溶液の質量〔g〕）', '濃度換算公式：c ＝ (10 × 密度 d × 質量％濃度) ÷ モル質量 M', '希釈（水で薄める）しても「溶質の物質量 n＝cV」は変わらない（c₁V₁ ＝ c₂V₂）'] },
+    14: { formula: '化学反応式の係数の比 ＝ 反応・生成する物質量(mol)の比 ＝ (気体なら)体積の比', points: ['質量の比は係数比と一致しないため、必ず一度「物質量 mol」に直してから計算する', '反応物に過不足がある場合は、少ない方（完全に消費される方）を基準に生成物の量を決める', '反応式の係数は左右の原子の種類と数（イオン反応式では電荷の総和も）が等しくなるように決める'] },
+    15: { formula: '電離度 α ＝ 電離した物質量 ÷ 溶かした物質量 ／ [H⁺]＝1.0×10⁻ˣ ⇒ pH＝x', points: ['アレニウスの定義（水中で H⁺/OH⁻）／ ブレンステッド・ローリーの定義（H⁺を与える＝酸、受け取る＝塩基）', '酸・塩基の強弱は電離度 α で決まり、価数（1価・2価）とは無関係。弱酸・弱塩基は薄めるほど α が増える', 'pH が 1 小さくなると [H⁺] は 10倍になる（25℃で Kw＝[H⁺][OH⁻]＝1.0×10⁻¹⁴）'] },
+    16: { formula: '[H⁺] ＝ 酸の価数 a × モル濃度 c × 電離度 α ／ 25℃: pH ＋ pOH ＝ 14', points: ['強酸・強塩基は電離度 α＝1 として計算する（弱酸・弱塩基は与えられた α を掛ける）', '塩基の場合はまず [OH⁻] ＝ b・c・α を求め、Kw＝1.0×10⁻¹⁴ から [H⁺]＝Kw÷[OH⁻] を出す', '酸を 10ⁿ 倍に薄めると pH は n 増え、塩基を 10ⁿ 倍に薄めると pH は n 減る（7は超えない）'] },
+    17: { formula: '塩の分類：正塩(NaCl) / 酸性塩(NaHCO₃, NaHSO₄) / 塩基性塩(CaCl(OH))', points: ['正塩の水溶液の液性：強酸＋強塩基→中性、強酸＋弱塩基→酸性、弱酸＋強塩基→塩基性', '弱酸の遊離（CaCO₃＋2HCl→CO₂↑）、弱塩基の遊離（NH₄Cl＋NaOH→NH₃↑）', '揮発性の酸の遊離：NaCl ＋ H₂SO₄(不揮発性) → HCl↑ ＋ NaHSO₄'] },
+    18: { formula: '中和の量的関係：a × ca × Va ＝ b × cb × Vb （酸の H⁺のmol ＝ 塩基の OH⁻のmol）', points: ['実験器具：ホールピペット・メスフラスコ（共洗い不要・純水で濡れてもよい）／ビュレット（共洗い必要）', '強酸＋弱塩基の滴定（酸性側で中和）→ メチルオレンジ（変色域 pH 3.1〜4.4）', '弱酸＋強塩基の滴定（塩基性側で中和）→ フェノールフタレイン（変色域 pH 8.0〜9.8）'] },
+    19: { formula: '酸化＝Oを得る・Hを失う・e⁻を失う・酸化数増加 ／ 還元＝Oを失う・Hを得る・e⁻を得る・酸化数減少', points: ['酸化数ルール：単体は 0、単原子イオンは価数、Hは＋1（NaH等は−1）、Oは−2（H₂O₂は−1）', '化合物の酸化数の総和は 0、多原子イオンの酸化数の総和はそのイオンの価数に等しい', '酸化と還元は必ず同時に起き、中和反応や沈殿生成反応は酸化数が変わらないため酸化還元ではない'] },
+    20: { formula: '酸化剤（相手を酸化し自身は還元される）／ 還元剤（相手を還元し自身は酸化される）', points: ['半反応式の作り方：① O を H₂O で合わせる → ② H を H⁺ で合わせる → ③ 電荷を e⁻ で合わせる', 'H₂O₂ や SO₂ は反応相手によって酸化剤にも還元剤にも働く', '全体の反応式は、2つの半反応式の電子 e⁻ の数を最小公倍数で揃えて消去してつくる'] },
+    21: { formula: 'イオン化傾向：K ＞ Ca ＞ Na ＞ Mg ＞ Al ＞ Zn ＞ Fe ＞ Ni ＞ Sn ＞ Pb ＞ (H₂) ＞ Cu ＞ Hg ＞ Ag ＞ Pt ＞ Au', points: ['H₂ より大きい金属は希塩酸・希硫酸に溶けて H₂ 発生（Pb は難溶性被膜で溶けにくい、Fe は Fe²⁺ に）', 'Cu・Hg・Ag は希硝酸(NO↑)・濃硝酸(NO₂↑)・熱濃硫酸(SO₂↑)の強い酸化力で溶ける', '電池：負極（イオン化傾向大・酸化）→ e⁻ → 正極（イオン化傾向小・還元）。一次電池と二次電池'] }
+  };
+
+  function getAreaMastery(areaId) {
+    const st = (state.areaStats && state.areaStats[areaId]) || { answered: 0, correct: 0 };
+    const ans = st.answered || 0;
+    const cor = st.correct || 0;
+    if (ans === 0) return { answered: 0, correct: 0, pct: 0, rank: '-', cls: 'rank-none', label: '未挑戦', color: '#94a3b8' };
+    const pct = Math.round((cor / ans) * 100);
+    if (pct >= 90 && ans >= 5) return { answered: ans, correct: cor, pct, rank: 'S', cls: 'rank-s', label: `S (${pct}%)`, color: '#eab308' };
+    if (pct >= 75) return { answered: ans, correct: cor, pct, rank: 'A', cls: 'rank-a', label: `A (${pct}%)`, color: '#22c55e' };
+    if (pct >= 55) return { answered: ans, correct: cor, pct, rank: 'B', cls: 'rank-b', label: `B (${pct}%)`, color: '#3b82f6' };
+    return { answered: ans, correct: cor, pct, rank: 'C', cls: 'rank-c', label: `C (${pct}%)`, color: '#ef4444' };
+  }
+
   function renderAreaList() {
     const list = document.getElementById('area-list');
     list.innerHTML = '';
@@ -8014,6 +8155,14 @@ const Game = (() => {
       const chCard = document.createElement('div');
       chCard.className = 'chapter-card';
 
+      let chAns = 0, chCor = 0;
+      ch.areaIds.forEach(aid => {
+        const m = getAreaMastery(aid);
+        chAns += m.answered;
+        chCor += m.correct;
+      });
+      const chRateStr = chAns > 0 ? ` ｜ 習得率 ${Math.round((chCor / chAns) * 100)}%` : '';
+
       const header = document.createElement('div');
       header.className = 'chapter-header' + (isOpen ? ' open' : '');
       header.innerHTML = `
@@ -8022,7 +8171,7 @@ const Game = (() => {
             <span class="chapter-badge">第${ch.id}章</span>
             <span class="chapter-title">${ch.title}</span>
           </div>
-          <div class="chapter-sub">${ch.sub}（全${ch.areaIds.length}単元）</div>
+          <div class="chapter-sub">${ch.sub}（全${ch.areaIds.length}単元${chRateStr}）</div>
         </div>
         <div class="chapter-actions">
           <button type="button" class="chapter-random-btn" title="この章の単元からランダム出題">⚡章まとめ</button>
@@ -8054,17 +8203,33 @@ const Game = (() => {
           if (!a) return;
           const badgeCls = a.mode === 'calc' ? 'calc' : (a.mode === 'mix' ? 'mix' : '');
           const modeLabel = a.mode === 'calc' ? '計算' : (a.mode === 'mix' ? '混合' : '4択');
+          const m = getAreaMastery(a.id);
           const div = document.createElement('div');
           div.className = 'area-card';
           div.id = 'area-card-' + a.id;
           div.onclick = () => startWildBattle(a.id);
           div.innerHTML = `
-            <div>
+            <div style="flex:1;min-width:0;">
               <div><span class="area-num ${badgeCls}">単元${a.id}・${modeLabel}</span><span class="area-name">${a.name}</span></div>
               <div class="area-meta">出現元素: ${a.pool.slice(0,5).map(z => getElement(z).sym).join(', ')} ほか</div>
+              <div class="area-mastery-row">
+                <span class="area-rank-badge ${m.cls}">${m.label}</span>
+                <div class="area-mastery-bar"><div class="area-mastery-fill" style="width:${m.pct}%;background:${m.color};"></div></div>
+                ${m.answered > 0 ? `<span style="font-size:9.5px;color:#64748b;font-weight:700;">${m.correct}/${m.answered}問</span>` : ''}
+              </div>
             </div>
-            <div class="area-go">探索</div>
+            <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+              <button type="button" class="area-note-btn" title="10秒要点まとめ">📖</button>
+              <div class="area-go">探索</div>
+            </div>
           `;
+          const noteBtn = div.querySelector('.area-note-btn');
+          if (noteBtn) {
+            noteBtn.onclick = (e) => {
+              e.stopPropagation();
+              openAreaNote(a.id);
+            };
+          }
           body.appendChild(div);
         });
         chCard.appendChild(body);
@@ -8613,11 +8778,22 @@ const Game = (() => {
       battle.reviewCursor = idx + 1;
       areaId = m.areaId || 1;
       battle.areaId = areaId;
+      let revOpts = m.opts ? [...m.opts] : null;
+      let revAnsIdx = m.ansIdx;
+      // 復習時も毎回選択肢をシャッフルし直して位置覚えによるまぐれ当たりを防止
+      if (revOpts && typeof revAnsIdx === 'number' && revOpts[revAnsIdx] !== undefined) {
+        const correctTxt = revOpts[revAnsIdx];
+        for (let k = revOpts.length - 1; k > 0; k--) {
+          const rj = Math.floor(Math.random() * (k + 1));
+          [revOpts[k], revOpts[rj]] = [revOpts[rj], revOpts[k]];
+        }
+        revAnsIdx = revOpts.indexOf(correctTxt);
+      }
       q = {
         type: m.type,
         q: m.q,
-        opts: m.opts ? [...m.opts] : null,
-        ansIdx: m.ansIdx,
+        opts: revOpts,
+        ansIdx: revAnsIdx,
         ans: m.ans,
         unit: m.unit || '',
         exp: m.exp || ''
@@ -8636,6 +8812,7 @@ const Game = (() => {
     const ch = CHAPTERS.find(c => c.areaIds.includes(area.id));
     battle.currentQ = q;
     battle.selectedQuizIdx = null;
+    battle.usedHintThisTurn = false;
 
     const chPrefix = battle.kind === 'review'
       ? `【📝復習バトル・単元${area.id}】`
@@ -8722,6 +8899,11 @@ const Game = (() => {
     if (!battle || battle.locked) return;
     battle.locked = true;
     state.stats.answered++;
+    if (!state.areaStats || typeof state.areaStats !== 'object') state.areaStats = {};
+    const aidKey = String(battle.areaId || 1);
+    if (!state.areaStats[aidKey]) state.areaStats[aidKey] = { answered: 0, correct: 0 };
+    state.areaStats[aidKey].answered++;
+    if (isCorrect) state.areaStats[aidKey].correct++;
     const activeMon = getActiveBattleMon();
     const pMeta = getMonsterMeta(activeMon);
     const eMeta = getMonsterMeta(battle.enemy);
@@ -8761,7 +8943,7 @@ const Game = (() => {
 
       const activeChem = battle.equippedChem || pMeta.chemType || null;
       const mult = getTypeMultiplier(pMeta.type, eMeta.type, activeChem);
-      const rawDmg = calcAtk(activeMon) * movePowerMult * (0.92 + Math.random() * 0.22) * mult * battle.atkBuff;
+      const rawDmg = calcAtk(activeMon) * movePowerMult * (0.92 + Math.random() * 0.22) * mult * battle.atkBuff * (battle.usedHintThisTurn ? 0.85 : 1.0);
       let dmg = Math.max(12, Math.round(rawDmg));
       if (battle.kind === 'tutorial') {
         dmg = battle.eHp;
@@ -9501,6 +9683,7 @@ const Game = (() => {
     Monster3DRenderer.setHiddenMode();
     SoundEngine.playBGM('title');
     updateHomeBar();
+    renderAreaList();
     showScreen('home');
   }
 
@@ -10464,10 +10647,86 @@ const Game = (() => {
     }
   }
 
+  function openAreaNote(targetAreaId) {
+    SoundEngine.seClick();
+    const aid = targetAreaId || (battle && battle.areaId) || 1;
+    const area = AREAS.find(a => a.id === aid) || AREAS[0];
+    const note = AREA_NOTES[aid] || AREA_NOTES[1];
+    const m = getAreaMastery(aid);
+    const box = document.getElementById('learn-note-box');
+    const bd = document.getElementById('learn-note-backdrop');
+    if (!box || !bd) return;
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:11px;font-weight:900;color:#0284c7;">📖 10秒要点まとめ｜単元${area.id}</span>
+        <span class="area-rank-badge ${m.cls}">${m.label}</span>
+      </div>
+      <div style="font-size:15px;font-weight:900;color:#0f172a;margin-bottom:8px;">${area.name}</div>
+      <div style="background:#eff6ff;border:1.5px solid #38bdf8;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:900;color:#1e3a8a;margin-bottom:8px;line-height:1.45;">
+        🔑 重要公式・ルール<br>${note.formula}
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:#1e293b;line-height:1.6;">
+        ${note.points.map(pt => `<li style="margin-bottom:4px;">${pt}</li>`).join('')}
+      </ul>
+      <div style="margin-top:10px;text-align:center;font-size:11px;font-weight:800;color:#64748b;">（画面のどこをタップしても閉じます）</div>
+    `;
+    bd.classList.remove('hidden');
+  }
+
+  function closeAreaNote() {
+    const bd = document.getElementById('learn-note-backdrop');
+    if (bd) bd.classList.add('hidden');
+  }
+
+  function showQuestionHint() {
+    if (!battle || !battle.currentQ) return;
+    SoundEngine.seClick();
+    battle.usedHintThisTurn = true;
+    const q = battle.currentQ;
+    const aid = battle.areaId || 1;
+    const area = AREAS.find(a => a.id === aid) || AREAS[0];
+    const note = AREA_NOTES[aid] || AREA_NOTES[1];
+
+    let hintHtml = '';
+    if (q.type === 'calc') {
+      hintHtml = `
+        <div style="font-size:12.5px;font-weight:800;color:#92400e;margin-bottom:6px;">計算のヒント（この単元の公式）</div>
+        <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:900;color:#78350f;line-height:1.5;">
+          ${note.formula}
+        </div>
+        <div style="font-size:11.5px;color:#334155;margin-top:8px;line-height:1.5;">
+          ・与えられた数値の単位（${q.unit || '値'}）を整理して式に当てはめよう！
+        </div>
+      `;
+    } else {
+      const keyPt = note.points[0] || note.formula;
+      hintHtml = `
+        <div style="font-size:12.5px;font-weight:800;color:#92400e;margin-bottom:6px;">考え方のヒント（${area.name}）</div>
+        <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;color:#78350f;line-height:1.5;">
+          💡 ${note.formula}<br>・${keyPt}
+        </div>
+        <div style="font-size:11.5px;color:#334155;margin-top:8px;line-height:1.5;">
+          ・当てずっぽうに選ばず、定義や性質に合わない選択肢から消去法で絞ってみよう！
+        </div>
+      `;
+    }
+
+    const box = document.getElementById('learn-note-box');
+    const bd = document.getElementById('learn-note-backdrop');
+    if (!box || !bd) return;
+    box.innerHTML = `
+      <div style="font-size:11px;font-weight:900;color:#d97706;margin-bottom:4px;">💡 ヒント（使用時ダメージ 0.85倍）</div>
+      ${hintHtml}
+      <div style="margin-top:10px;text-align:center;font-size:11px;font-weight:800;color:#64748b;">（画面のどこをタップしても閉じます）</div>
+    `;
+    bd.classList.remove('hidden');
+  }
+
   return {
     init, startFromTitle, returnToTitle, startWildBattle, startTower,
     onCommandFight, onCommandFlask, onCommandBag, onCommandSwitch, onCommandRun,
     onConfirmCatch, openSubpage, closeSubpage,
+    openAreaNote, closeAreaNote, showQuestionHint,
     advanceTutorialIntro, advanceHomeTutorial, advanceBattleTutorial, skipTutorial, onTutorialCalcInput
   };
 })();
